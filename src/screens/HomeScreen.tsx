@@ -1,547 +1,1210 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, StatusBar, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOWS, FONTS } from '../constants/theme';
-import { getPrayerTimes } from '../services/api';
+"use client";
 
-interface PrayerTime {
-  [key: string]: string;
-}
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  StatusBar,
+  TextInput,
+  Animated,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SIZES } from "../constants/theme";
+import { PLACEHOLDER_IMAGES } from "../constants/images";
+import { Ionicons, Feather } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
+import ThemeToggle from "../components/ThemeToggle";
 
-const HomeScreen = () => {
-  const [prayerTimes, setPrayerTimes] = useState<PrayerTime | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [countdown, setCountdown] = useState('00:13:30');
-  const [nextPrayer, setNextPrayer] = useState('Dhuhr');
+// Prayer times data (in a real app, this would come from an API)
+const PRAYER_TIMES = {
+  fajr: { hour: 5, minute: 15 },
+  sunrise: { hour: 6, minute: 45 },
+  dhuhr: { hour: 13, minute: 30 },
+  asr: { hour: 14, minute: 45 },
+  maghrib: { hour: 19, minute: 25 },
+  isha: { hour: 20, minute: 25 },
+};
+
+// Helper function to convert Gregorian to Hijri date
+const getHijriDate = () => {
+  // This is a simplified conversion - in a real app, use a proper Hijri calendar library
+  const today = new Date();
+  const gregorianYear = today.getFullYear();
+  const gregorianMonth = today.getMonth();
+  const gregorianDay = today.getDate();
+
+  // Approximate conversion (this is not accurate, just for demonstration)
+  // In a real app, use a proper Hijri calendar library like hijri-date or moment-hijri
+  const hijriYear = Math.floor(
+    gregorianYear - 622 + (gregorianYear - 622) / 32
+  );
+  const hijriMonth = (gregorianMonth + 1) % 12; // Simplified
+  const hijriDay = gregorianDay; // Simplified
+
+  // Month names in Arabic
+  const hijriMonths = [
+    "Muharram",
+    "Safar",
+    "Rabi' al-Awwal",
+    "Rabi' al-Thani",
+    "Jumada al-Awwal",
+    "Jumada al-Thani",
+    "Rajab",
+    "Sha'ban",
+    "Ramadan",
+    "Shawwal",
+    "Dhu al-Qi'dah",
+    "Dhu al-Hijjah",
+  ];
+
+  return `${hijriDay} ${hijriMonths[hijriMonth]} ${hijriYear} H`;
+};
+
+// Helper function to get the next prayer
+const getNextPrayer = () => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+  const prayers = [
+    {
+      name: "Fajr",
+      time: PRAYER_TIMES.fajr.hour * 60 + PRAYER_TIMES.fajr.minute,
+    },
+    {
+      name: "Sunrise",
+      time: PRAYER_TIMES.sunrise.hour * 60 + PRAYER_TIMES.sunrise.minute,
+    },
+    {
+      name: "Dhuhr",
+      time: PRAYER_TIMES.dhuhr.hour * 60 + PRAYER_TIMES.dhuhr.minute,
+    },
+    { name: "Asr", time: PRAYER_TIMES.asr.hour * 60 + PRAYER_TIMES.asr.minute },
+    {
+      name: "Maghrib",
+      time: PRAYER_TIMES.maghrib.hour * 60 + PRAYER_TIMES.maghrib.minute,
+    },
+    {
+      name: "Isha",
+      time: PRAYER_TIMES.isha.hour * 60 + PRAYER_TIMES.isha.minute,
+    },
+  ];
+
+  // Find the next prayer
+  for (const prayer of prayers) {
+    if (prayer.time > currentTimeInMinutes) {
+      return {
+        name: prayer.name,
+        timeInMinutes: prayer.time,
+        hour: Math.floor(prayer.time / 60),
+        minute: prayer.time % 60,
+      };
+    }
+  }
+
+  // If all prayers for today have passed, return Fajr for tomorrow
+  return {
+    name: "Fajr",
+    timeInMinutes: prayers[0].time + 24 * 60, // Add 24 hours
+    hour: PRAYER_TIMES.fajr.hour,
+    minute: PRAYER_TIMES.fajr.minute,
+    tomorrow: true,
+  };
+};
+
+// Helper function to format time
+const formatTime = (hour, minute) => {
+  const period = hour >= 12 ? "PM" : "AM";
+  const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${formattedHour}:${minute.toString().padStart(2, "0")} ${period}`;
+};
+
+export default function HomeScreen() {
+  // Use the theme context
+  const { colors, shadows, isDarkMode } = useTheme();
+
+  const [currentTime, setCurrentTime] = useState("");
+  const [countdown, setCountdown] = useState("00:00:00");
+  const [nextPrayer, setNextPrayer] = useState({
+    name: "Fajr",
+    hour: 5,
+    minute: 15,
+  });
   const [progress, setProgress] = useState(0);
+  const [islamicDate, setIslamicDate] = useState("");
+  const [location, setLocation] = useState("Salaji, Gambia");
+  const [prayerTimes, setPrayerTimes] = useState([]);
+  const [prayerStatuses, setPrayerStatuses] = useState({});
+  const [animation] = useState(new Animated.Value(0));
 
+  // Initialize and update time-related states
   useEffect(() => {
-    fetchPrayerTimes();
-    startCountdown();
-  }, []);
+    // Set Islamic date
+    setIslamicDate(getHijriDate());
 
-  const startCountdown = () => {
-    const updateCountdown = () => {
-      const now = new Date();
-      const targetTime = new Date();
-      
-      // Set target time to next Dhuhr (example: 13:30)
-      targetTime.setHours(13, 30, 0, 0);
-      
-      // If target time has passed today, set for tomorrow
-      if (now > targetTime) {
-        targetTime.setDate(targetTime.getDate() + 1);
-      }
-      
-      const timeDiff = targetTime.getTime() - now.getTime();
-      const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-      const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-      
-      // Format countdown string without negative sign
-      const timeLeft = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      setCountdown(timeLeft);
-      
-      // Calculate progress (1 = complete, 0 = just started)
-      const totalSecondsLeft = hours * 3600 + minutes * 60 + seconds;
-      const totalDuration = 24 * 3600; // 24 hours in seconds
-      const newProgress = 1 - (totalSecondsLeft / totalDuration);
-      setProgress(newProgress);
-    };
+    // Get user's location (in a real app, use Geolocation API)
+    // For demo, we'll use the hardcoded location
 
-    // Update immediately
-    updateCountdown();
-    
-    // Update every second but avoid setState on unmounted component
-    let mounted = true;
-    const timer = setInterval(() => {
-      if (mounted) {
-        updateCountdown();
-      }
+    // Initialize prayer times and statuses
+    updatePrayerTimesAndStatuses();
+
+    // Start timers
+    const timeInterval = setInterval(() => {
+      updateCurrentTime();
+      updatePrayerTimesAndStatuses();
     }, 1000);
 
+    // Start animation
+    startAnimation();
+
     return () => {
-      mounted = false;
-      clearInterval(timer);
+      clearInterval(timeInterval);
     };
+  }, []);
+
+  // Animation for prayer cards
+  const startAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(animation, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animation, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   };
 
-  const fetchPrayerTimes = async () => {
-    try {
-      const times = await getPrayerTimes();
-      setPrayerTimes(times);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
+  // Update current time and countdown
+  const updateCurrentTime = () => {
+    const now = new Date();
+
+    // Update current time display
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    setCurrentTime(
+      `${hours.toString().padStart(2, "0")}:${minutes
+        .toString()
+        .padStart(2, "0")}`
+    );
+
+    // Get next prayer
+    const next = getNextPrayer();
+    setNextPrayer(next);
+
+    // Calculate countdown to next prayer
+    const nextPrayerTimeInMinutes = next.timeInMinutes;
+    const currentTimeInMinutes = hours * 60 + minutes;
+    let timeDiffInMinutes = nextPrayerTimeInMinutes - currentTimeInMinutes;
+
+    if (timeDiffInMinutes < 0) {
+      // If next prayer is tomorrow
+      timeDiffInMinutes += 24 * 60;
     }
+
+    const countdownHours = Math.floor(timeDiffInMinutes / 60);
+    const countdownMinutes = Math.floor(timeDiffInMinutes % 60);
+    const countdownSeconds = 59 - now.getSeconds();
+
+    setCountdown(
+      `${countdownHours.toString().padStart(2, "0")}:${countdownMinutes
+        .toString()
+        .padStart(2, "0")}:${countdownSeconds.toString().padStart(2, "0")}`
+    );
+
+    // Calculate progress for the countdown circle
+    // Assuming the total duration between prayers is 5 hours (300 minutes) on average
+    const totalDuration = 300;
+    const newProgress = 1 - timeDiffInMinutes / totalDuration;
+    setProgress(Math.min(Math.max(newProgress, 0), 1));
   };
 
-  const renderGoalItem = (label: string, progress: string, color: string) => (
-    <View style={styles.goalItem}>
-      <Text style={styles.goalText}>{progress} {label}</Text>
-      <View style={[styles.progressDot, { backgroundColor: color }]} />
-    </View>
-  );
+  // Update prayer times and statuses
+  const updatePrayerTimesAndStatuses = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+    const prayers = [
+      { name: "Fajr", time: PRAYER_TIMES.fajr, icon: "sunrise" },
+      { name: "Dhuhr", time: PRAYER_TIMES.dhuhr, icon: "sun" },
+      { name: "Asr", time: PRAYER_TIMES.asr, icon: "sun" },
+      { name: "Maghrib", time: PRAYER_TIMES.maghrib, icon: "sunset" },
+      { name: "Isha", time: PRAYER_TIMES.isha, icon: "moon" },
+    ];
+
+    // Format prayer times and determine statuses
+    const formattedPrayers = prayers.map((prayer) => {
+      const timeInMinutes = prayer.time.hour * 60 + prayer.time.minute;
+      const formattedTime = formatTime(prayer.time.hour, prayer.time.minute);
+
+      let status = "pending";
+      if (currentTimeInMinutes > timeInMinutes) {
+        status = "completed";
+      } else if (
+        currentTimeInMinutes < timeInMinutes &&
+        nextPrayer.name === prayer.name
+      ) {
+        status = "next";
+      }
+
+      return {
+        ...prayer,
+        formattedTime,
+        timeInMinutes,
+        status,
+      };
+    });
+
+    setPrayerTimes(formattedPrayers);
+
+    // Create status object for the daily prayers section
+    const statuses = {};
+    formattedPrayers.forEach((prayer) => {
+      statuses[prayer.name.toLowerCase()] = prayer.status;
+    });
+
+    setPrayerStatuses(statuses);
+  };
 
   const renderCountdownCircle = () => {
     const rotation = progress * 360;
-    
-    // Calculate the border color based on progress
-    const calculateBorderColor = () => {
-      // Convert hex to RGB for interpolation
-      const r = Math.round(lerp(0, 224, progress)); // From 0 to E0
-      const g = Math.round(lerp(200, 224, progress)); // From C8 to E0
-      const b = Math.round(lerp(83, 224, progress)); // From 53 to E0
-      return `rgb(${r}, ${g}, ${b})`;
-    };
 
     return (
-      <View style={styles.nextPrayerCard}>
-        <View style={styles.circleContainer}>
-          <View style={[styles.outerCircle, { borderColor: calculateBorderColor() }]}>
-            {/* Green circle */}
-            <View style={styles.fullCircle} />
-            {/* White overlay */}
-            <View style={[styles.whiteOverlay, {
-              transform: [
-                { rotateZ: '-90deg' },
-                { rotateZ: `${rotation}deg` }
-              ]
-            }]} />
-            {/* Inner white circle with content */}
-            <View style={styles.contentCircle}>
-              <Text style={styles.nextPrayerName}>{nextPrayer}</Text>
-              <Text style={styles.countdownTime}>{countdown}</Text>
-            </View>
+      <View style={styles.circleContainer}>
+        <View style={[styles.outerCircle, { borderColor: colors.primary }]}>
+          {/* Progress circle */}
+          <View
+            style={[styles.fullCircle, { backgroundColor: colors.primary }]}
+          />
+          {/* White overlay */}
+          <View
+            style={[
+              styles.whiteOverlay,
+              {
+                backgroundColor: colors.background,
+                transform: [
+                  { rotateZ: "-90deg" },
+                  { rotateZ: `${rotation}deg` },
+                ],
+              },
+            ]}
+          />
+          {/* Inner white circle with content */}
+          <View
+            style={[
+              styles.contentCircle,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Text style={[styles.nextPrayerName, { color: colors.text }]}>
+              {nextPrayer.name}
+            </Text>
+            <Text style={[styles.countdownTime, { color: colors.text }]}>
+              {countdown}
+            </Text>
           </View>
         </View>
       </View>
     );
   };
 
-  // Add linear interpolation helper function at the top of the component
-  const lerp = (start: number, end: number, t: number) => {
-    return start * (1 - t) + end * t;
+  const renderFeatureButton = (icon, label) => (
+    <TouchableOpacity style={styles.featureButton}>
+      <View
+        style={[
+          styles.featureIconContainer,
+          { backgroundColor: colors.tertiary },
+        ]}
+      >
+        {icon}
+      </View>
+      <Text style={[styles.featureLabel, { color: colors.text }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const getPrayerStatusStyle = (status) => {
+    switch (status) {
+      case "completed":
+        return {
+          backgroundColor: `${colors.prayerCompleted}20`,
+          color: colors.prayerCompleted,
+          text: "Completed",
+        };
+      case "next":
+        return {
+          backgroundColor: `${colors.prayerNext}30`,
+          color: colors.prayerNext,
+          text: "Next",
+        };
+      default:
+        return {
+          backgroundColor: `${colors.prayerPending}20`,
+          color: colors.prayerPending,
+          text: "Pending",
+        };
+    }
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={styles.location}>Maintal</Text>
-            <View style={styles.headerIcons}>
-              {/* <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="diamond-outline" size={24} color={COLORS.primary} />
-              </TouchableOpacity> */}
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="person-outline" size={24} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.headerBackground}
+      />
+
+      {/* Theme Toggle */}
+      <ThemeToggle />
+
+      {/* Header with Audio Book and Search */}
+      <View
+        style={[styles.header, { backgroundColor: colors.headerBackground }]}
+      >
+        {/* Top Header Row */}
+        <View style={styles.headerTopRow}>
+          <View>
+            <Text style={[styles.islamicDate, { color: colors.textLight }]}>
+              {islamicDate}
+            </Text>
+            <Text style={[styles.location, { color: colors.textLight }]}>
+              {location}
+            </Text>
           </View>
-          <Text style={styles.date}>26 Ramadan, 1446</Text>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color={colors.textLight}
+            />
+          </TouchableOpacity>
         </View>
 
-        {/* Sunrise Card */}
-        <View style={styles.sunriseCard}>
-          <View style={styles.cardContent}>
-            <View style={styles.sunriseInfo}>
-              <Text style={styles.sunriseTitle}>Sunrise</Text>
-              <Text style={styles.sunriseTime}>6:14 AM</Text>
-              <TouchableOpacity style={styles.viewAllButton}>
-                <Text style={styles.viewAllText}>View All prayers</Text>
-              </TouchableOpacity>
-            </View>
-            {renderCountdownCircle()}
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={colors.textLight}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={[styles.searchInput, { color: colors.textLight }]}
+            placeholder="Search surah, narrators or keywords"
+            placeholderTextColor="rgba(255, 255, 255, 0.7)"
+          />
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Current Time Display */}
+        <View
+          style={[
+            styles.timeDisplay,
+            { backgroundColor: colors.headerBackground },
+          ]}
+        >
+          <Text style={[styles.currentTime, { color: colors.textLight }]}>
+            {currentTime}
+          </Text>
+          <Text style={[styles.timeInfo, { color: colors.textLight }]}>
+            {nextPrayer.name} · {countdown} left
+          </Text>
+
+          {/* Prayer Times Row */}
+          <View style={styles.prayerTimesRow}>
+            {prayerTimes.map((prayer, index) => (
+              <View key={index} style={styles.prayerTimeItem}>
+                <Feather
+                  name={prayer.icon}
+                  size={20}
+                  color={colors.textLight}
+                />
+                <Text
+                  style={[styles.prayerTimeLabel, { color: colors.textLight }]}
+                >
+                  {prayer.name}
+                </Text>
+                <Text
+                  style={[styles.prayerTimeValue, { color: colors.textLight }]}
+                >
+                  {prayer.formattedTime}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Indicator */}
+          <View style={styles.indicator}>
+            <View
+              style={[
+                styles.indicatorDot,
+                { backgroundColor: colors.secondary },
+              ]}
+            />
           </View>
         </View>
 
-        {/* Prayer Times Bar */}
-        <View style={styles.prayerBar}>
-          <View style={styles.prayerTime}>
-            <Text style={styles.prayerLabel}>Fajr</Text>
-            <Text style={styles.prayerTimeText}>4:21 AM</Text>
-          </View>
-          <View style={styles.moonIcon}>
-            <Ionicons name="moon-outline" size={24} color={COLORS.background} />
-          </View>
-          <View style={styles.prayerTime}>
-            <Text style={styles.prayerLabel}>Iftar</Text>
-            <Text style={styles.prayerTimeText}>6:48 PM</Text>
+        {/* Favorites */}
+        <View
+          style={[
+            styles.favoritesSection,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>
+            Favourites
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.favoritesContainer}
+          >
+            <TouchableOpacity
+              style={[
+                styles.favoriteChip,
+                { backgroundColor: colors.primaryTransparent },
+              ]}
+            >
+              <Text
+                style={[styles.favoriteChipText, { color: colors.primary }]}
+              >
+                67. Al-Mulk
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.favoriteChip,
+                { backgroundColor: colors.primaryTransparent },
+              ]}
+            >
+              <Text
+                style={[styles.favoriteChipText, { color: colors.primary }]}
+              >
+                2. Al-Baqarah
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.favoriteChip,
+                { backgroundColor: colors.primaryTransparent },
+              ]}
+            >
+              <Text
+                style={[styles.favoriteChipText, { color: colors.primary }]}
+              >
+                19. Maryam
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* Continue Listening */}
+        <View
+          style={[
+            styles.continueListeningSection,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Continue Listening
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.continueListeningCard,
+              { backgroundColor: colors.cardBackground, ...shadows.light },
+            ]}
+          >
+            <Image
+              source={{ uri: PLACEHOLDER_IMAGES.surahs.alBaqarah }}
+              style={[
+                styles.surahThumbnail,
+                { backgroundColor: colors.primaryTransparent },
+              ]}
+            />
+            <View style={styles.continueListeningInfo}>
+              <Text
+                style={[styles.continueListeningTitle, { color: colors.text }]}
+              >
+                2. Al-Baqarah
+              </Text>
+              <Text
+                style={[
+                  styles.continueListeningSubtitle,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                The Cow
+              </Text>
+              <View style={styles.progressContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    {
+                      backgroundColor: isDarkMode
+                        ? "rgba(255, 255, 255, 0.1)"
+                        : "rgba(0, 0, 0, 0.1)",
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { backgroundColor: colors.primary, width: "22%" },
+                    ]}
+                  />
+                </View>
+                <Text
+                  style={[styles.progressText, { color: colors.textSecondary }]}
+                >
+                  18:00/88:00
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.playButton,
+                { backgroundColor: colors.secondaryTransparent },
+              ]}
+            >
+              <Ionicons name="play" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+
+        {/* Features Section */}
+        <View
+          style={[
+            styles.featuresSection,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            All Features
+          </Text>
+          <View style={styles.featuresGrid}>
+            {renderFeatureButton(
+              <Ionicons
+                name="book-outline"
+                size={24}
+                color={colors.textLight}
+              />,
+              "Quran"
+            )}
+            {renderFeatureButton(
+              <Ionicons
+                name="volume-high-outline"
+                size={24}
+                color={colors.textLight}
+              />,
+              "Adzan"
+            )}
+            {renderFeatureButton(
+              <Ionicons
+                name="compass-outline"
+                size={24}
+                color={colors.textLight}
+              />,
+              "Qibla"
+            )}
+            {renderFeatureButton(
+              <Ionicons
+                name="heart-outline"
+                size={24}
+                color={colors.textLight}
+              />,
+              "Donation"
+            )}
+            {renderFeatureButton(
+              <Ionicons
+                name="grid-outline"
+                size={24}
+                color={colors.textLight}
+              />,
+              "All"
+            )}
           </View>
         </View>
 
-        {/* Daily Goals - Prayer Times List */}
-        <View style={styles.goalsContainer}>
-          <Text style={styles.goalsTitle}>Daily Prayers</Text>
-          <View style={styles.prayersList}>
-            <View style={styles.prayerItem}>
-              <View style={styles.prayerNameTime}>
-                <Text style={styles.prayerName}>Fajr</Text>
-                <Text style={styles.prayerSchedule}>4:21 AM</Text>
-              </View>
-              <View style={[styles.prayerStatus, styles.prayerPending]}>
-                <Text style={styles.statusText}>Pending</Text>
-              </View>
-            </View>
+        {/* Daily Prayers - Enhanced */}
+        <View
+          style={[
+            styles.dailyPrayersSection,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Daily Prayers
+            </Text>
+            <TouchableOpacity>
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                View All
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.prayerItem}>
-              <View style={styles.prayerNameTime}>
-                <Text style={styles.prayerName}>Dhuhr</Text>
-                <Text style={styles.prayerSchedule}>1:30 PM</Text>
-              </View>
-              <View style={[styles.prayerStatus, styles.prayerNext]}>
-                <Text style={styles.statusText}>Next</Text>
-              </View>
-            </View>
+          <View
+            style={[
+              styles.prayersListContainer,
+              { backgroundColor: colors.cardBackground, ...shadows.medium },
+            ]}
+          >
+            {prayerTimes.map((prayer, index) => {
+              const statusStyle = getPrayerStatusStyle(prayer.status);
+              const isNext = prayer.status === "next";
 
-            <View style={styles.prayerItem}>
-              <View style={styles.prayerNameTime}>
-                <Text style={styles.prayerName}>Asr</Text>
-                <Text style={styles.prayerSchedule}>4:45 PM</Text>
-              </View>
-              <View style={[styles.prayerStatus, styles.prayerPending]}>
-                <Text style={styles.statusText}>Pending</Text>
-              </View>
-            </View>
+              // Create animated styles for the "next" prayer
+              const animatedStyle = isNext
+                ? {
+                    transform: [
+                      {
+                        scale: animation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.03],
+                        }),
+                      },
+                    ],
+                    shadowOpacity: animation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.1, 0.3],
+                    }),
+                  }
+                : {};
 
-            <View style={styles.prayerItem}>
-              <View style={styles.prayerNameTime}>
-                <Text style={styles.prayerName}>Maghrib</Text>
-                <Text style={styles.prayerSchedule}>6:48 PM</Text>
-              </View>
-              <View style={[styles.prayerStatus, styles.prayerPending]}>
-                <Text style={styles.statusText}>Pending</Text>
-              </View>
-            </View>
-
-            <View style={styles.prayerItem}>
-              <View style={styles.prayerNameTime}>
-                <Text style={styles.prayerName}>Isha</Text>
-                <Text style={styles.prayerSchedule}>8:15 PM</Text>
-              </View>
-              <View style={[styles.prayerStatus, styles.prayerPending]}>
-                <Text style={styles.statusText}>Pending</Text>
-              </View>
-            </View>
+              return (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.enhancedPrayerItem,
+                    {
+                      backgroundColor: isNext
+                        ? `${colors.primary}10`
+                        : colors.cardBackground,
+                      borderBottomColor: colors.divider,
+                    },
+                    isNext && {
+                      borderLeftWidth: 3,
+                      borderLeftColor: colors.primary,
+                    },
+                    animatedStyle,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.prayerIconContainer,
+                      {
+                        backgroundColor: isDarkMode
+                          ? "rgba(255, 255, 255, 0.05)"
+                          : "rgba(0, 0, 0, 0.05)",
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={prayer.icon}
+                      size={24}
+                      color={isNext ? colors.primary : colors.tertiary}
+                    />
+                  </View>
+                  <View style={styles.prayerNameTime}>
+                    <Text
+                      style={[
+                        styles.prayerName,
+                        { color: colors.text },
+                        isNext && { color: colors.primary, fontWeight: "700" },
+                      ]}
+                    >
+                      {prayer.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.prayerSchedule,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {prayer.formattedTime}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.prayerStatus,
+                      { backgroundColor: statusStyle.backgroundColor },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.statusText, { color: statusStyle.color }]}
+                    >
+                      {statusStyle.text}
+                    </Text>
+                  </View>
+                </Animated.View>
+              );
+            })}
           </View>
         </View>
 
         {/* Recent Audios */}
-        <View style={styles.recentAudiosContainer}>
-          <Text style={styles.sectionTitle}>Recent Audios</Text>
-          <ScrollView 
-            horizontal 
+        <View
+          style={[
+            styles.recentAudiosContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Recent Audios
+            </Text>
+            <TouchableOpacity>
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                See All
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.recentAudiosScroll}
           >
-            <TouchableOpacity style={styles.audioCard}>
-              <View style={styles.reciterImageContainer}>
-                <Image 
-                  source={{ uri: 'https://i.imgur.com/7kPpBQH.jpg' }} 
+            <TouchableOpacity
+              style={[
+                styles.audioCard,
+                { backgroundColor: colors.cardBackground, ...shadows.light },
+              ]}
+            >
+              <View
+                style={[
+                  styles.reciterImageContainer,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+              >
+                <Image
+                  source={{ uri: PLACEHOLDER_IMAGES.reciters.misharyRashid }}
                   style={styles.reciterImage}
                 />
               </View>
               <View style={styles.audioInfo}>
-                <Text style={styles.reciterName}>Mishary Rashid</Text>
-                <Text style={styles.surahName}>Surah Al-Fatiha</Text>
+                <Text style={[styles.reciterName, { color: colors.text }]}>
+                  Mishary Rashid
+                </Text>
+                <Text
+                  style={[styles.surahName, { color: colors.textSecondary }]}
+                >
+                  Surah Al-Fatiha
+                </Text>
               </View>
-              <Ionicons name="play-circle" size={24} color={COLORS.primary} />
+              <Ionicons name="play-circle" size={24} color={colors.primary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.audioCard}>
-              <View style={styles.reciterImageContainer}>
-                <Image 
-                  source={{ uri: 'https://i.imgur.com/QYkJwkH.jpg' }} 
+            <TouchableOpacity
+              style={[
+                styles.audioCard,
+                { backgroundColor: colors.cardBackground, ...shadows.light },
+              ]}
+            >
+              <View
+                style={[
+                  styles.reciterImageContainer,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+              >
+                <Image
+                  source={{ uri: PLACEHOLDER_IMAGES.reciters.abdulRahman }}
                   style={styles.reciterImage}
                 />
               </View>
               <View style={styles.audioInfo}>
-                <Text style={styles.reciterName}>Abdul Rahman</Text>
-                <Text style={styles.surahName}>Surah Al-Baqarah</Text>
+                <Text style={[styles.reciterName, { color: colors.text }]}>
+                  Abdul Rahman
+                </Text>
+                <Text
+                  style={[styles.surahName, { color: colors.textSecondary }]}
+                >
+                  Surah Al-Baqarah
+                </Text>
               </View>
-              <Ionicons name="play-circle" size={24} color={COLORS.primary} />
+              <Ionicons name="play-circle" size={24} color={colors.primary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.audioCard}>
-              <View style={styles.reciterImageContainer}>
-                <Image 
-                  source={{ uri: 'https://i.imgur.com/L8UeEsy.jpg' }} 
+            <TouchableOpacity
+              style={[
+                styles.audioCard,
+                { backgroundColor: colors.cardBackground, ...shadows.light },
+              ]}
+            >
+              <View
+                style={[
+                  styles.reciterImageContainer,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+              >
+                <Image
+                  source={{ uri: PLACEHOLDER_IMAGES.reciters.maherMuaiqly }}
                   style={styles.reciterImage}
                 />
               </View>
               <View style={styles.audioInfo}>
-                <Text style={styles.reciterName}>Maher Al Muaiqly</Text>
-                <Text style={styles.surahName}>Surah Yasin</Text>
+                <Text style={[styles.reciterName, { color: colors.text }]}>
+                  Maher Al Muaiqly
+                </Text>
+                <Text
+                  style={[styles.surahName, { color: colors.textSecondary }]}
+                >
+                  Surah Yasin
+                </Text>
               </View>
-              <Ionicons name="play-circle" size={24} color={COLORS.primary} />
+              <Ionicons name="play-circle" size={24} color={colors.primary} />
             </TouchableOpacity>
           </ScrollView>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffff",
+  },
+  header: {
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.padding,
+  },
+  islamicDate: {
+    fontSize: SIZES.medium,
+    fontWeight: "500",
+  },
+  location: {
+    fontSize: SIZES.small,
+    opacity: 0.8,
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  audioBookTitle: {
+    fontSize: SIZES.large,
+    fontWeight: "bold",
+    marginBottom: SIZES.base,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.base,
+    marginBottom: SIZES.base,
+  },
+  searchIcon: {
+    marginRight: SIZES.base,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: SIZES.medium,
   },
   scrollView: {
     flex: 1,
   },
-  header: {
-  bottom: 40,
-    paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding * 1.5,
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: `${COLORS.textSecondary}10`,
+  timeDisplay: {
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: SIZES.padding * 2,
+    borderBottomLeftRadius: SIZES.radius * 2,
+    borderBottomRightRadius: SIZES.radius * 2,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base * 1.5,
+  currentTime: {
+    fontSize: 48,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: SIZES.padding,
   },
-  location: {
-    fontSize: SIZES.extraLarge * 1.2,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: -0.5,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SIZES.base,
-  },
-  iconButton: {
-    padding: SIZES.base,
-    backgroundColor: `${COLORS.textSecondary}10`,
-    borderRadius: SIZES.radius,
-  },
-  date: {
+  timeInfo: {
     fontSize: SIZES.medium,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
+    textAlign: "center",
+    marginBottom: SIZES.padding,
   },
-  sunriseCard: {
-    width: '90%',
-    alignSelf: 'center', 
-    bottom: 60,
-    marginHorizontal: SIZES.padding * 2,
-    marginVertical: SIZES.padding,
-    backgroundColor: COLORS.background,
-    borderRadius: SIZES.radius * 2,
-    padding: SIZES.padding * 1.5,
-    shadowColor: COLORS.text,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  prayerTimesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: SIZES.padding,
   },
-  cardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  prayerTimeItem: {
+    alignItems: "center",
   },
-  sunriseInfo: {
-    flex: 1,
+  prayerTimeLabel: {
+    fontSize: SIZES.small,
+    marginTop: 4,
+    marginBottom: 2,
   },
-  sunriseTitle: {
-    fontSize: SIZES.large,
-    fontWeight: '600',
-    color: COLORS.text,
+  prayerTimeValue: {
+    fontSize: SIZES.small,
+    fontWeight: "500",
+  },
+  indicator: {
+    alignItems: "center",
+    marginTop: SIZES.padding,
+  },
+  indicatorDot: {
+    width: 32,
+    height: 4,
+    borderRadius: 2,
+  },
+  // Favorites Section
+  favoritesSection: {
+    padding: SIZES.padding,
+  },
+  sectionLabel: {
+    fontSize: SIZES.medium,
+    fontWeight: "600",
     marginBottom: SIZES.base,
   },
-  sunriseTime: {
-    fontSize: SIZES.extraLarge * 1.2,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  favoritesContainer: {
+    flexDirection: "row",
+    paddingVertical: SIZES.base,
+  },
+  favoriteChip: {
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.base,
+    borderRadius: 20,
+    marginRight: SIZES.base,
+  },
+  favoriteChipText: {
+    fontSize: SIZES.small,
+    fontWeight: "500",
+  },
+  // Continue Listening Section
+  continueListeningSection: {
+    padding: SIZES.padding,
+  },
+  sectionTitle: {
+    fontSize: SIZES.large,
+    fontWeight: "600",
+    marginBottom: SIZES.base,
+  },
+  continueListeningCard: {
+    flexDirection: "row",
+    borderRadius: SIZES.radius,
+    padding: SIZES.base,
+    marginVertical: SIZES.base,
+    alignItems: "center",
+  },
+  surahThumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: SIZES.base,
+  },
+  continueListeningInfo: {
+    flex: 1,
+  },
+  continueListeningTitle: {
+    fontSize: SIZES.medium,
+    fontWeight: "600",
+  },
+  continueListeningSubtitle: {
+    fontSize: SIZES.small,
+    marginBottom: 4,
+  },
+  progressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    marginRight: SIZES.base,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 10,
+  },
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  // Features Section
+  featuresSection: {
+    padding: SIZES.padding,
+  },
+  featuresGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  featureButton: {
+    width: "18%",
+    alignItems: "center",
     marginBottom: SIZES.padding,
   },
-  viewAllButton: {
-    backgroundColor: `${COLORS.background}20`,
-    paddingVertical: SIZES.base,
-    paddingHorizontal: SIZES.padding,
-    borderRadius: SIZES.radius,
-    alignSelf: 'flex-start',
+  featureIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  featureLabel: {
+    fontSize: SIZES.small,
+    textAlign: "center",
+  },
+  // Daily Prayers Section - Enhanced
+  dailyPrayersSection: {
+    padding: SIZES.padding,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.padding,
   },
   viewAllText: {
-    color: COLORS.primary,
     fontSize: SIZES.medium,
-    fontWeight: '500',
+    fontWeight: "500",
   },
-  prayerBar: {
-    width: '90%',
-    alignSelf: 'center', 
-    bottom: 60,
-    marginHorizontal: SIZES.padding * 2,
-    marginBottom: SIZES.padding,
-    backgroundColor: COLORS.primary,
+  prayersListContainer: {
     borderRadius: SIZES.radius,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SIZES.padding,
-    shadowColor: COLORS.text,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    overflow: "hidden",
   },
-  prayerTime: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  prayerLabel: {
-    fontSize: SIZES.medium,
-    fontWeight: '500',
-    color: COLORS.background,
-    marginBottom: SIZES.base / 2,
-  },
-  prayerTimeText: {
-    fontSize: SIZES.large,
-    fontWeight: '600',
-    color: COLORS.background,
-  },
-  moonIcon: {
-    backgroundColor: `${COLORS.background}20`,
-    padding: SIZES.base,
-    borderRadius: SIZES.radius,
-    marginHorizontal: SIZES.padding,
-  },
-  goalsContainer: {
-    marginHorizontal: SIZES.padding * 2,
-    marginBottom: SIZES.padding * 2,
-    bottom: 60,
-    width: '90%',
-    alignSelf: 'center', 
-  },
-  goalsTitle: {
-    fontSize: SIZES.large,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SIZES.padding,
-  },
-  prayersList: {
-    backgroundColor: COLORS.background,
-    borderRadius: SIZES.radius,
-    shadowColor: COLORS.text,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  prayerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  enhancedPrayerItem: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: SIZES.padding,
     borderBottomWidth: 1,
-    borderBottomColor: `${COLORS.textSecondary}20`,
+  },
+  prayerIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: SIZES.base,
   },
   prayerNameTime: {
     flex: 1,
+    marginLeft: SIZES.base,
   },
   prayerName: {
     fontSize: SIZES.medium,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: SIZES.base / 2,
+    fontWeight: "500",
+    marginBottom: 4,
   },
   prayerSchedule: {
     fontSize: SIZES.small,
-    color: COLORS.textSecondary,
   },
   prayerStatus: {
-    paddingVertical: SIZES.base / 2,
-    paddingHorizontal: SIZES.base,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: SIZES.radius / 2,
-    marginLeft: SIZES.base,
-  },
-  prayerPending: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  prayerNext: {
-    backgroundColor: COLORS.secondary,
   },
   statusText: {
     fontSize: SIZES.small,
-    fontWeight: '500',
-    color: COLORS.primary,
+    fontWeight: "500",
   },
-  goalItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
+  // Recent Audios Section
+  recentAudiosContainer: {
+    padding: SIZES.padding,
+    paddingBottom: SIZES.padding * 2,
   },
-  goalText: {
+  recentAudiosScroll: {
+    paddingBottom: SIZES.padding,
+  },
+  audioCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    marginRight: SIZES.padding,
+    width: 280,
+  },
+  reciterImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    overflow: "hidden",
+    marginRight: SIZES.padding,
+  },
+  reciterImage: {
+    width: "100%",
+    height: "100%",
+  },
+  audioInfo: {
+    flex: 1,
+  },
+  reciterName: {
     fontSize: SIZES.medium,
-    color: COLORS.text,
+    fontWeight: "600",
+    marginBottom: 2,
   },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  nextPrayerCard: {
-    width: 120,
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
+  surahName: {
+    fontSize: SIZES.small,
   },
   circleContainer: {
-    position: 'relative',
+    position: "relative",
+    width: 100,
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
   },
   outerCircle: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+    overflow: "hidden",
     borderWidth: 2,
   },
   fullCircle: {
-    position: 'absolute',
-    width: '96%',
-    height: '96%',
+    position: "absolute",
+    width: "96%",
+    height: "96%",
     borderRadius: 50,
-    backgroundColor: COLORS.secondary,
-    top: '2%',
-    left: '2%',
+    top: "2%",
+    left: "2%",
   },
   whiteOverlay: {
-    position: 'absolute',
-    width: '200%',
-    height: '200%',
-    backgroundColor: COLORS.background,
-    left: '-50%',
-    top: '-50%',
+    position: "absolute",
+    width: "200%",
+    height: "200%",
+    left: "-50%",
+    top: "-50%",
     borderRadius: 999,
     zIndex: 2,
   },
@@ -549,78 +1212,18 @@ const styles = StyleSheet.create({
     width: 86,
     height: 86,
     borderRadius: 43,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 3,
   },
   nextPrayerName: {
     fontSize: SIZES.medium,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontWeight: "bold",
     marginBottom: 2,
   },
   countdownTime: {
-    fontSize: SIZES.medium,
-    fontWeight: '500',
-    color: COLORS.text,
+    fontSize: SIZES.small,
+    fontWeight: "500",
     letterSpacing: 0.5,
   },
-  recentAudiosContainer: {
-    paddingTop: SIZES.padding,
-  },
-  sectionTitle: {
-    fontSize: SIZES.large,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    paddingHorizontal: SIZES.padding,
-    marginBottom: SIZES.base,
-  },
-  recentAudiosScroll: {
-    paddingHorizontal: SIZES.padding,
-    paddingBottom: SIZES.padding,
-  },
-  audioCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    padding: SIZES.padding,
-    borderRadius: SIZES.radius,
-    marginRight: SIZES.padding,
-    width: 280,
-    shadowColor: COLORS.text,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  reciterImageContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    overflow: 'hidden',
-    marginRight: SIZES.padding,
-  },
-  reciterImage: {
-    width: '100%',
-    height: '100%',
-  },
-  audioInfo: {
-    flex: 1,
-  },
-  reciterName: {
-    fontSize: SIZES.medium,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  surahName: {
-    fontSize: SIZES.small,
-    color: COLORS.textSecondary,
-  },
 });
-
-export default HomeScreen;
