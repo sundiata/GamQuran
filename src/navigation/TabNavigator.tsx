@@ -1,18 +1,18 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { Platform, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import HomeScreen from '../screens/HomeScreen';
-import PrayerTimesScreen from '../screens/PrayerTimesScreen';
-import QuranScreen from '../screens/QuranScreen';
-import SurahDetailScreen from '../screens/SurahDetailScreen';
-import AudioScreen from '../screens/AudioScreen';
-import NowPlayingScreen from '../screens/NowPlayingScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import AlbumDetailScreen from '../screens/AlbumDetailScreen';
-import { COLORS, SIZES } from '../constants/theme';
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import { Platform, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import HomeScreen from "../screens/HomeScreen";
+import PrayerTimesScreen from "../screens/PrayerTimesScreen";
+import QuranScreen from "../screens/QuranScreen";
+import SurahDetailScreen from "../screens/SurahDetailScreen";
+import AudioScreen from "../screens/AudioScreen";
+import NowPlayingScreen from "../screens/NowPlayingScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import AlbumDetailScreen from "../screens/AlbumDetailScreen";
+import { COLORS, SIZES } from "../constants/theme";
 
 const Tab = createBottomTabNavigator();
 const QuranStack = createNativeStackNavigator();
@@ -26,7 +26,7 @@ const QuranNavigator = () => {
       }}
     >
       <QuranStack.Screen name="QuranList" component={QuranScreen} />
-      <QuranStack.Screen name="SurahDetail" component={SurahDetailScreen} />
+      <QuranStack.Screen name="SurahDetailScreen" component={SurahDetailScreen} />
     </QuranStack.Navigator>
   );
 };
@@ -39,17 +39,14 @@ const AudioNavigator = () => {
       }}
     >
       <AudioStack.Screen name="AudioList" component={AudioScreen} />
-      <AudioStack.Screen name="AlbumDetail" component={AlbumDetailScreen} />
+      <AudioStack.Screen name="NowPlayingScreen" component={AlbumDetailScreen} />
     </AudioStack.Navigator>
   );
 };
 
 const TabNavigator = () => {
   return (
-    <SafeAreaView 
-      style={{ flex: 1 }}
-      edges={['top']}
-    >
+    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       <Tab.Navigator
         screenOptions={{
           tabBarActiveTintColor: COLORS.primary,
@@ -58,13 +55,13 @@ const TabNavigator = () => {
             backgroundColor: COLORS.background,
             borderTopWidth: 1,
             borderTopColor: `${COLORS.textSecondary}10`,
-            height: Platform.OS === 'ios' ? 88 : 68,
+            height: Platform.OS === "ios" ? 88 : 68,
             paddingTop: 8,
-            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+            paddingBottom: Platform.OS === "ios" ? 28 : 8,
           },
           tabBarLabelStyle: {
             fontSize: 12,
-            fontWeight: '500',
+            fontWeight: "500",
             paddingBottom: 4,
           },
           tabBarIconStyle: {
@@ -83,7 +80,7 @@ const TabNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="Prayer Times"
+          name="PrayerTimesScreen"
           component={PrayerTimesScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
@@ -101,7 +98,7 @@ const TabNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="Audio"
+          name="AudioScreen"
           component={AudioNavigator}
           options={{
             tabBarIcon: ({ color, size }) => (

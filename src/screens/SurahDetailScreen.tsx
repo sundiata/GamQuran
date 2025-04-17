@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+"use client";
+
+import type React from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,12 +9,13 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-} from 'react-native';
-import { Audio } from 'expo-av';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
-import { getSurah, Surah } from '../services/api';
-import { useRoute, useNavigation } from '@react-navigation/native';
+  Alert,
+} from "react-native";
+import { Audio } from "expo-av";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES, SHADOWS } from "../constants/theme";
+import { getSurah } from "../services/api";
+import { useRoute, useNavigation } from "@react-navigation/native";
 
 interface RouteParams {
   surahNumber: number;
@@ -30,12 +34,13 @@ const SurahDetailScreen: React.FC = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { surahNumber, surahName, totalAyahs } = route.params as RouteParams;
-  
+
   const [loading, setLoading] = useState(true);
   const [arabicText, setArabicText] = useState<Ayah[]>([]);
   const [translation, setTranslation] = useState<Ayah[]>([]);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSurahContent();
@@ -50,22 +55,47 @@ const SurahDetailScreen: React.FC = () => {
   const loadSurahContent = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log(`Loading surah number: ${surahNumber}`);
+
       // Load Arabic text
-      const arabicData = await getSurah(surahNumber, 'quran-uthmani');
-      
-      // Load audio data
-      const audioData = await getSurah(surahNumber, 'ar.alafasy');
-      const ayahsWithAudio = arabicData.ayahs.map((ayah: Ayah, index: number) => ({
-        ...ayah,
-        audio: audioData.ayahs[index]?.audio,
-      }));
-      setArabicText(ayahsWithAudio);
+      const arabicData = await getSurah(surahNumber, "quran-uthmani");
+
+      if (!arabicData || !arabicData.ayahs) {
+        throw new Error("Failed to load Arabic text");
+      }
+
+      setArabicText(arabicData.ayahs);
 
       // Load English translation
-      const translationData = await getSurah(surahNumber, 'en.asad');
-      setTranslation(translationData.ayahs);
+      const translationData = await getSurah(surahNumber, "en.asad");
+
+      if (translationData && translationData.ayahs) {
+        setTranslation(translationData.ayahs);
+      }
+
+      // Try to load audio data
+      try {
+        const audioData = await getSurah(surahNumber, "ar.alafasy");
+
+        if (audioData && audioData.ayahs) {
+          // Add audio URLs to the Arabic text
+          const ayahsWithAudio = arabicData.ayahs.map(
+            (ayah: Ayah, index: number) => ({
+              ...ayah,
+              audio: audioData.ayahs[index]?.audio,
+            })
+          );
+
+          setArabicText(ayahsWithAudio);
+        }
+      } catch (audioError) {
+        console.error("Error loading audio data:", audioError);
+        // Continue without audio if it fails
+      }
     } catch (error) {
-      console.error('Error loading surah content:', error);
+      console.error("Error loading surah content:", error);
+      setError("Failed to load surah content. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -89,13 +119,19 @@ const SurahDetailScreen: React.FC = () => {
         await playAyah(ayah);
       }
     } catch (error) {
-      console.error('Error handling audio:', error);
+      console.error("Error handling audio:", error);
     }
   };
 
   const playAyah = async (ayah: Ayah) => {
     try {
-      if (!ayah.audio) return;
+      if (!ayah.audio) {
+        Alert.alert(
+          "Audio not available",
+          "Audio for this verse is not available."
+        );
+        return;
+      }
 
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: ayah.audio },
@@ -114,14 +150,62 @@ const SurahDetailScreen: React.FC = () => {
         }
       });
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error("Error playing audio:", error);
+      Alert.alert("Error", "Failed to play audio. Please try again.");
     }
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.background} />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.surahName}>{surahName}</Text>
+            <Text style={styles.ayahCount}>Loading...</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading surah content...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.background} />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.surahName}>{surahName}</Text>
+          </View>
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={COLORS.error}
+          />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={loadSurahContent}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -129,7 +213,7 @@ const SurahDetailScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -141,13 +225,14 @@ const SurahDetailScreen: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.bismillahContainer}>
-          <Text style={styles.bismillahText}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</Text>
-        </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {surahNumber !== 9 && ( // Surah At-Tawbah (9) doesn't start with Bismillah
+          <View style={styles.bismillahContainer}>
+            <Text style={styles.bismillahText}>
+              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+            </Text>
+          </View>
+        )}
 
         {arabicText.map((ayah, index) => (
           <View key={ayah.number} style={styles.ayahContainer}>
@@ -155,23 +240,23 @@ const SurahDetailScreen: React.FC = () => {
               <View style={styles.ayahNumberContainer}>
                 <Text style={styles.ayahNumber}>{ayah.number}</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.playButton,
-                  playingAyah === ayah.number && styles.playingButton
+                  playingAyah === ayah.number && styles.playingButton,
                 ]}
                 onPress={() => handlePlayPause(ayah)}
               >
-                <Ionicons 
-                  name={playingAyah === ayah.number ? "pause" : "play"} 
-                  size={20} 
-                  color={COLORS.primary} 
+                <Ionicons
+                  name={playingAyah === ayah.number ? "pause" : "play"}
+                  size={20}
+                  color={COLORS.primary}
                 />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.arabicText}>{ayah.text}</Text>
-            
+
             {translation[index] && (
               <Text style={styles.translationText}>
                 {translation[index].text}
@@ -192,8 +277,8 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.primary,
     padding: SIZES.padding * 2,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   backButton: {
     marginRight: SIZES.padding,
@@ -203,7 +288,7 @@ const styles = StyleSheet.create({
   },
   surahName: {
     fontSize: SIZES.extraLarge,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.background,
   },
   ayahCount: {
@@ -216,14 +301,14 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
   },
   bismillahContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: SIZES.padding * 2,
     marginBottom: SIZES.padding,
   },
   bismillahText: {
     fontSize: SIZES.extraLarge * 1.2,
     color: COLORS.primary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   ayahContainer: {
     backgroundColor: COLORS.background,
@@ -233,9 +318,9 @@ const styles = StyleSheet.create({
     ...SHADOWS.light,
   },
   ayahHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.padding,
   },
   ayahNumberContainer: {
@@ -243,12 +328,12 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: `${COLORS.primary}20`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   ayahNumber: {
     fontSize: SIZES.medium,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.primary,
   },
   playButton: {
@@ -256,8 +341,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: `${COLORS.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   playingButton: {
     backgroundColor: `${COLORS.primary}20`,
@@ -265,7 +350,7 @@ const styles = StyleSheet.create({
   arabicText: {
     fontSize: SIZES.extraLarge,
     color: COLORS.text,
-    textAlign: 'right',
+    textAlign: "right",
     lineHeight: SIZES.extraLarge * 2,
     marginBottom: SIZES.padding,
   },
@@ -274,6 +359,39 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: SIZES.large * 1.5,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: SIZES.medium,
+    color: COLORS.text,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.padding * 2,
+  },
+  errorText: {
+    fontSize: SIZES.medium,
+    color: COLORS.text,
+    textAlign: "center",
+    marginVertical: SIZES.padding,
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding * 2,
+    paddingVertical: SIZES.padding,
+    borderRadius: SIZES.radius,
+  },
+  retryButtonText: {
+    color: COLORS.background,
+    fontSize: SIZES.medium,
+    fontWeight: "600",
+  },
 });
 
-export default SurahDetailScreen; 
+export default SurahDetailScreen;

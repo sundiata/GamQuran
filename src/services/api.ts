@@ -129,7 +129,7 @@ export const getPrayerTimes = async (city = "Banjul", country = "Gambia") => {
         params: {
           city,
           country,
-          method: 4, // Umm Al-Qura University, Makkah
+          method: 4,
         },
       }
     );
@@ -185,8 +185,8 @@ export const fetchIslamicDate = async () => {
       const hijri = data.data.hijri;
       return {
         day: hijri.day,
-        month: hijri.month.en, // English month name
-        monthArabic: hijri.month.ar, // Arabic month name
+        month: hijri.month.en, 
+        monthArabic: hijri.month.ar, 
         year: hijri.year,
         format: `${hijri.day} ${hijri.month.en} ${hijri.year} H`,
       };

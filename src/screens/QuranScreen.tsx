@@ -1,13 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
-import { getSurahs, Surah } from '../services/api';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, NavigationProp } from "@react-navigation/native";
+import { COLORS, SIZES, SHADOWS } from "../constants/theme";
+import { getSurahs, Surah } from "../services/api";
 
 type QuranStackParamList = {
   QuranList: undefined;
-  SurahDetail: {
+  SurahDetailScreen: {
     surahNumber: number;
     surahName: string;
     totalAyahs: number;
@@ -28,14 +35,14 @@ const QuranScreen: React.FC = () => {
       const data = await getSurahs();
       setSurahs(data);
     } catch (error) {
-      console.error('Error loading surahs:', error);
+      console.error("Error loading surahs:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSurahPress = (surah: Surah) => {
-    navigation.navigate('SurahDetail', {
+    navigation.navigate("SurahDetailScreen", {
       surahNumber: surah.number,
       surahName: surah.englishName,
       totalAyahs: surah.numberOfAyahs,
@@ -43,7 +50,7 @@ const QuranScreen: React.FC = () => {
   };
 
   const renderSurahItem = ({ item }: { item: Surah }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.surahCard}
       onPress={() => handleSurahPress(item)}
     >
@@ -53,7 +60,9 @@ const QuranScreen: React.FC = () => {
       <View style={styles.surahInfo}>
         <View>
           <Text style={styles.surahName}>{item.englishName}</Text>
-          <Text style={styles.surahTranslation}>{item.englishNameTranslation}</Text>
+          <Text style={styles.surahTranslation}>
+            {item.englishNameTranslation}
+          </Text>
         </View>
         <View style={styles.surahMetadata}>
           <Text style={styles.surahType}>{item.revelationType}</Text>
@@ -78,7 +87,7 @@ const QuranScreen: React.FC = () => {
         <Text style={styles.headerTitle}>The Holy Quran</Text>
         <Text style={styles.headerSubtitle}>114 Surahs</Text>
       </View>
-      
+
       <FlatList
         data={surahs}
         renderItem={renderSurahItem}
@@ -98,11 +107,11 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.primary,
     padding: SIZES.padding * 2,
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: SIZES.extraLarge,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.background,
     marginBottom: SIZES.base,
   },
@@ -119,8 +128,8 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     marginBottom: SIZES.padding,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     ...SHADOWS.light,
   },
   surahNumberContainer: {
@@ -128,13 +137,13 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: `${COLORS.primary}20`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: SIZES.padding,
   },
   surahNumber: {
     fontSize: SIZES.medium,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.primary,
   },
   surahInfo: {
@@ -143,7 +152,7 @@ const styles = StyleSheet.create({
   },
   surahName: {
     fontSize: SIZES.large,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginBottom: 2,
   },
@@ -153,8 +162,8 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   surahMetadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   surahType: {
     fontSize: SIZES.small,
@@ -172,7 +181,7 @@ const styles = StyleSheet.create({
   arabicName: {
     fontSize: SIZES.large,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
