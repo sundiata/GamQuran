@@ -15,11 +15,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
-import ThemeToggle from "../components/ThemeToggle";
 import { useTheme } from "../context/ThemeContext";
 import { fetchIslamicDate, fetchPrayerTimes } from "../services/api";
-
-// Default coordinates for Banjul, Gambia
+import * as Location from "expo-location";
 const DEFAULT_LATITUDE = 13.4549;
 const DEFAULT_LONGITUDE = -16.579;
 
@@ -39,7 +37,11 @@ export default function HomeScreen({ navigation }) {
   });
   const [progress, setProgress] = useState(0);
   const [islamicDate, setIslamicDate] = useState("");
-  const [location, setLocation] = useState("Banjul, Gambia");
+  const [location, setLocation] = useState("Loading location...");
+  const [coordinates, setCoordinates] = useState({
+    latitude: DEFAULT_LATITUDE,
+    longitude: DEFAULT_LONGITUDE,
+  });
   const [prayerTimes, setPrayerTimes] = useState([]);
   const [prayerStatuses, setPrayerStatuses] = useState({});
   const [animation] = useState(new Animated.Value(0));
@@ -47,8 +49,8 @@ export default function HomeScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-
   const searchTimeoutRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
 
   // Initialize and update time-related states
   useEffect(() => {
@@ -56,14 +58,45 @@ export default function HomeScreen({ navigation }) {
       setIsLoading(true);
 
       try {
-        // Get Islamic date using the API
+        let userLocation = null;
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const position = await Location.getCurrentPositionAsync({});
+            userLocation = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+            const geocode = await Location.reverseGeocodeAsync({
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+            });
+
+            if (geocode && geocode[0]) {
+              const { city, country } = geocode[0];
+              const locationName = `${city || "Unknown"}, ${
+                country || "Unknown"
+              }`;
+              setLocation(locationName);
+            }
+
+            console.log(userLocation);
+
+            setCoordinates(userLocation);
+          } else {
+            console.log("Location permission denied, using default location");
+          }
+        } catch (locationError) {
+          console.error("Error getting location:", locationError);
+        }
+
+        //Islamic Date
         const hijriDate = await fetchIslamicDate();
         setIslamicDate(hijriDate.format);
 
-        // Get prayer times from the API
         const prayerData = await fetchPrayerTimes(
-          DEFAULT_LATITUDE,
-          DEFAULT_LONGITUDE
+          userLocation ? userLocation.latitude : DEFAULT_LATITUDE,
+          userLocation ? userLocation.longitude : DEFAULT_LONGITUDE
         );
 
         // Format prayer times for display
@@ -99,9 +132,6 @@ export default function HomeScreen({ navigation }) {
         updatePrayerTimesAndStatuses(formattedPrayerTimes);
       } catch (error) {
         console.error("Error initializing app:", error);
-        // Fallback to mock data if API fails
-        setIslamicDate("9 Ramadhan 1444 H");
-        initializeWithMockData();
       } finally {
         setIsLoading(false);
       }
@@ -109,16 +139,23 @@ export default function HomeScreen({ navigation }) {
 
     initializeApp();
 
-    // Start timers
+    // Set up intervals for time updates
     const timeInterval = setInterval(() => {
       updateCurrentTime();
     }, 1000);
 
-    // Start animation
+    // Set up countdown interval that updates every second
+    countdownIntervalRef.current = setInterval(() => {
+      updateCountdown();
+    }, 1000);
+
     startAnimation();
 
     return () => {
       clearInterval(timeInterval);
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
@@ -129,7 +166,6 @@ export default function HomeScreen({ navigation }) {
   const formatTimeObject = (timeStr) => {
     if (!timeStr) return { hour: 0, minute: 0 };
 
-    // Remove any trailing text (like "(IST)")
     const cleanTime = timeStr.split(" ")[0];
 
     const [hours, minutes] = cleanTime.split(":");
@@ -137,21 +173,6 @@ export default function HomeScreen({ navigation }) {
       hour: Number.parseInt(hours, 10),
       minute: Number.parseInt(minutes, 10),
     };
-  };
-
-  // Initialize with mock data (fallback)
-  const initializeWithMockData = () => {
-    // Set mock prayer times
-    const mockPrayerTimes = [
-      { name: "Fajr", time: { hour: 4, minute: 41 }, icon: "sunrise" },
-      { name: "Dhuhr", time: { hour: 12, minute: 0 }, icon: "sun" },
-      { name: "Asr", time: { hour: 15, minute: 14 }, icon: "sun" },
-      { name: "Maghrib", time: { hour: 18, minute: 2 }, icon: "sunset" },
-      { name: "Isha", time: { hour: 19, minute: 11 }, icon: "moon" },
-    ];
-
-    setPrayerTimes(mockPrayerTimes);
-    updatePrayerTimesAndStatuses(mockPrayerTimes);
   };
 
   // Animation for prayer cards
@@ -172,7 +193,7 @@ export default function HomeScreen({ navigation }) {
     ).start();
   };
 
-  // Update current time and countdown
+  // Update current time
   const updateCurrentTime = () => {
     const now = new Date();
 
@@ -189,6 +210,52 @@ export default function HomeScreen({ navigation }) {
     if (prayerTimes.length > 0) {
       updatePrayerTimesAndStatuses(prayerTimes);
     }
+  };
+
+  // Update countdown timer separately to ensure it updates every second
+  const updateCountdown = () => {
+    if (!nextPrayer) return;
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentSecond = now.getSeconds();
+    const currentTimeInSeconds =
+      currentHour * 60 * 60 + currentMinute * 60 + currentSecond;
+
+    // Calculate target time in seconds
+    let targetTimeInSeconds =
+      nextPrayer.hour * 60 * 60 + nextPrayer.minute * 60;
+
+    // If next prayer is tomorrow, add 24 hours worth of seconds
+    if (nextPrayer.tomorrow) {
+      targetTimeInSeconds += 24 * 60 * 60;
+    }
+
+    // Calculate time difference in seconds
+    let timeDiffInSeconds = targetTimeInSeconds - currentTimeInSeconds;
+
+    if (timeDiffInSeconds < 0) {
+      // If somehow negative, reset to tomorrow
+      timeDiffInSeconds += 24 * 60 * 60;
+    }
+
+    // Convert to hours, minutes, seconds
+    const countdownHours = Math.floor(timeDiffInSeconds / 3600);
+    const countdownMinutes = Math.floor((timeDiffInSeconds % 3600) / 60);
+    const countdownSeconds = timeDiffInSeconds % 60;
+
+    // Format countdown string
+    setCountdown(
+      `${countdownHours.toString().padStart(2, "0")}:${countdownMinutes
+        .toString()
+        .padStart(2, "0")}:${countdownSeconds.toString().padStart(2, "0")}`
+    );
+
+    // Calculate progress for the countdown circle
+    const totalDuration = 300 * 60; // 5 hours in seconds
+    const newProgress = 1 - timeDiffInSeconds / totalDuration;
+    setProgress(Math.min(Math.max(newProgress, 0), 1));
   };
 
   // Update prayer times and statuses
@@ -244,29 +311,6 @@ export default function HomeScreen({ navigation }) {
       minute: next.time.minute,
       tomorrow: next.tomorrow,
     });
-
-    // Calculate countdown to next prayer
-    let timeDiffInMinutes = next.timeInMinutes - currentTimeInMinutes;
-
-    if (timeDiffInMinutes < 0) {
-      // If next prayer is tomorrow
-      timeDiffInMinutes += 24 * 60;
-    }
-
-    const countdownHours = Math.floor(timeDiffInMinutes / 60);
-    const countdownMinutes = Math.floor(timeDiffInMinutes % 60);
-    const countdownSeconds = 59 - now.getSeconds();
-
-    setCountdown(
-      `${countdownHours.toString().padStart(2, "0")}:${countdownMinutes
-        .toString()
-        .padStart(2, "0")}:${countdownSeconds.toString().padStart(2, "0")}`
-    );
-
-    // Calculate progress for the countdown circle
-    const totalDuration = 300; // 5 hours in minutes
-    const newProgress = 1 - timeDiffInMinutes / totalDuration;
-    setProgress(Math.min(Math.max(newProgress, 0), 1));
 
     // Update prayer times state
     setPrayerTimes(formattedPrayers);
@@ -337,65 +381,17 @@ export default function HomeScreen({ navigation }) {
 
   // Navigate to prayer times page
   const navigateToPrayerTimes = () => {
-    navigation.navigate("PrayerTimesScreen");
+    navigation.navigate("Prayer Times");
   };
 
   // Navigate to audio page
   const navigateToAudios = () => {
-    navigation.navigate("AudioScreen");
+    navigation.navigate("Audio");
   };
 
   // Navigate to feature screens
   const navigateToFeature = (screenName) => {
     navigation.navigate(screenName);
-  };
-
-  const renderCountdownCircle = () => {
-    const rotation = progress * 360;
-
-    return (
-      <View style={styles.circleContainer}>
-        <View style={[styles.outerCircle, { borderColor: colors.secondary }]}>
-          {/* Progress circle */}
-          <View
-            style={[styles.fullCircle, { backgroundColor: colors.secondary }]}
-          />
-          {/* White overlay */}
-          <View
-            style={[
-              styles.whiteOverlay,
-              {
-                transform: [
-                  { rotateZ: "-90deg" },
-                  { rotateZ: `${rotation}deg` },
-                ],
-                backgroundColor: isDarkMode
-                  ? colors.background
-                  : colors.background,
-              },
-            ]}
-          />
-          {/* Inner white circle with content */}
-          <View
-            style={[
-              styles.contentCircle,
-              {
-                backgroundColor: isDarkMode
-                  ? colors.background
-                  : colors.background,
-              },
-            ]}
-          >
-            <Text style={[styles.nextPrayerName, { color: colors.text }]}>
-              {nextPrayer.name}
-            </Text>
-            <Text style={[styles.countdownTime, { color: colors.text }]}>
-              {countdown}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
   };
 
   const renderFeatureButton = (icon, label, screenName) => (
@@ -522,7 +518,7 @@ export default function HomeScreen({ navigation }) {
         />
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.primary }]}>
-          Loading prayer times...
+          Loading...
         </Text>
       </SafeAreaView>
     );
@@ -536,9 +532,6 @@ export default function HomeScreen({ navigation }) {
         barStyle={isDarkMode ? "light-content" : "dark-content"}
         backgroundColor={colors.headerBackground}
       />
-
-      {/* Theme Toggle */}
-      <ThemeToggle />
 
       {/* Header with Search */}
       <View
@@ -731,7 +724,10 @@ export default function HomeScreen({ navigation }) {
                 { backgroundColor: colors.primaryTransparent },
               ]}
               onPress={() =>
-                navigation.navigate("SurahDetailScreen", { surahId: 67 })
+                navigation.navigate("SurahDetailScreen", {
+                  surahNumber: 67,
+                  surahName: "Al-Mulk",
+                })
               }
             >
               <Text
@@ -746,7 +742,10 @@ export default function HomeScreen({ navigation }) {
                 { backgroundColor: colors.primaryTransparent },
               ]}
               onPress={() =>
-                navigation.navigate("SurahDetailScreen", { surahId: 2 })
+                navigation.navigate("SurahDetailScreen", {
+                  surahNumber: 2,
+                  surahName: "Al-Baqarah",
+                })
               }
             >
               <Text
@@ -761,7 +760,10 @@ export default function HomeScreen({ navigation }) {
                 { backgroundColor: colors.primaryTransparent },
               ]}
               onPress={() =>
-                navigation.navigate("SurahDetailScreen", { surahId: 19 })
+                navigation.navigate("SurahDetailScreen", {
+                  surahNumber: 19,
+                  surahName: "Maryam",
+                })
               }
             >
               <Text
@@ -789,7 +791,13 @@ export default function HomeScreen({ navigation }) {
               { backgroundColor: colors.cardBackground },
             ]}
             onPress={() =>
-              navigation.navigate("NowPlayingScreen", { surahId: 2 })
+              navigation.navigate("NowPlayingScreen", {
+                song: {
+                  title: "2. Al-Baqarah",
+                  artist: "Sheikh Mishary",
+                  imageUrl: "https://placeholder-images.com/surahs/alBaqarah",
+                },
+              })
             }
           >
             <Image
@@ -842,7 +850,7 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Daily Prayers - Enhanced */}
+        {/* Daily Prayers */}
         <View
           style={[
             styles.dailyPrayersSection,
@@ -980,8 +988,12 @@ export default function HomeScreen({ navigation }) {
               ]}
               onPress={() =>
                 navigation.navigate("NowPlayingScreen", {
-                  reciterId: 1,
-                  surahId: 1,
+                  song: {
+                    title: "Surah Al-Fatiha",
+                    artist: "Mishary Rashid",
+                    imageUrl:
+                      "https://placeholder-images.com/reciters/misharyRashid",
+                  },
                 })
               }
             >
@@ -1017,7 +1029,14 @@ export default function HomeScreen({ navigation }) {
                 { backgroundColor: colors.cardBackground },
               ]}
               onPress={() =>
-                navigation.navigate("AudioPlayer", { reciterId: 2, surahId: 2 })
+                navigation.navigate("NowPlayingScreen", {
+                  song: {
+                    title: "Surah Al-Baqarah",
+                    artist: "Abdul Rahman",
+                    imageUrl:
+                      "https://placeholder-images.com/reciters/abdulRahman",
+                  },
+                })
               }
             >
               <View
@@ -1052,9 +1071,13 @@ export default function HomeScreen({ navigation }) {
                 { backgroundColor: colors.cardBackground },
               ]}
               onPress={() =>
-                navigation.navigate("AudioPlayer", {
-                  reciterId: 3,
-                  surahId: 36,
+                navigation.navigate("NowPlayingScreen", {
+                  song: {
+                    title: "Surah Yasin",
+                    artist: "Maher Al Muaiqly",
+                    imageUrl:
+                      "https://placeholder-images.com/reciters/maherMuaiqly",
+                  },
                 })
               }
             >

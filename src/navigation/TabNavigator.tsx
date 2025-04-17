@@ -26,7 +26,10 @@ const QuranNavigator = () => {
       }}
     >
       <QuranStack.Screen name="QuranList" component={QuranScreen} />
-      <QuranStack.Screen name="SurahDetailScreen" component={SurahDetailScreen} />
+      <QuranStack.Screen
+        name="SurahDetailScreen"
+        component={SurahDetailScreen}
+      />
     </QuranStack.Navigator>
   );
 };
@@ -39,7 +42,10 @@ const AudioNavigator = () => {
       }}
     >
       <AudioStack.Screen name="AudioList" component={AudioScreen} />
-      <AudioStack.Screen name="NowPlayingScreen" component={AlbumDetailScreen} />
+      <AudioStack.Screen
+        name="NowPlayingScreen"
+        component={AlbumDetailScreen}
+      />
     </AudioStack.Navigator>
   );
 };
@@ -80,7 +86,7 @@ const TabNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="PrayerTimesScreen"
+          name="Prayer Times"
           component={PrayerTimesScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
@@ -98,7 +104,7 @@ const TabNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="AudioScreen"
+          name="Audio"
           component={AudioNavigator}
           options={{
             tabBarIcon: ({ color, size }) => (

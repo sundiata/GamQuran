@@ -155,6 +155,8 @@ const SurahDetailScreen: React.FC = () => {
     }
   };
 
+  console.log(surahName);
+
   if (loading) {
     return (
       <View style={styles.container}>

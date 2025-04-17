@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,12 @@ const NowPlayingScreen = ({ navigation, route }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0.3);
 
+  // Extract song data safely with defaults
+  const song = route.params?.song || {};
+  const songTitle = song?.title || "Unknown Title";
+  const artistName = song?.artist || "Unknown Artist";
+  const imageUrl = song?.imageUrl || "https://example.com/artwork.jpg";
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -32,19 +38,15 @@ const NowPlayingScreen = ({ navigation, route }) => {
       <View style={styles.content}>
         <View style={styles.artworkContainer}>
           <Image
-            source={{
-              uri:
-                route.params?.song?.imageUrl ||
-                "https://example.com/artwork.jpg",
-            }}
+            source={{ uri: imageUrl }}
             style={styles.artwork}
             defaultSource={require("../assets/default-song.png")}
           />
         </View>
 
         <View style={styles.songInfo}>
-          <Text style={styles.songTitle}>Janum Ali Ali</Text>
-          <Text style={styles.artistName}>Ali Jee</Text>
+          <Text style={styles.songTitle}>{songTitle}</Text>
+          <Text style={styles.artistName}>{artistName}</Text>
         </View>
 
         <View style={styles.progressContainer}>
