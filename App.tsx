@@ -12,7 +12,7 @@ export default function App() {
       <ThemeProvider>
         <View style={{ flex: 1, backgroundColor: COLORS.background }}>
           <AppNavigator />
-          <StatusBar style="dark" backgroundColor={COLORS.background} />
+          <StatusBar style="light" backgroundColor={COLORS.primary} />
         </View>
       </ThemeProvider>
     </SafeAreaProvider>

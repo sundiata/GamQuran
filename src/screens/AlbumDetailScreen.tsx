@@ -6,6 +6,7 @@ import {
   Image,
   FlatList,
   TouchableOpacity,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,7 +16,15 @@ interface Track {
   id: string;
   title: string;
   duration: string;
-  imageUrl?: string;
+  imageUrl?: ImageSourcePropType;
+}
+
+interface Album {
+  title: string;
+  artist: string;
+  imageUrl: ImageSourcePropType;
+  year?: string;
+  tracks?: number;
 }
 
 // Dummy tracks data for the album
@@ -36,7 +45,7 @@ const AlbumDetailScreen = ({ route, navigation }) => {
   const { album } = route.params || {
     title: "Unknown Album",
     artist: "Unknown Artist",
-    imageUrl: "https://example.com/default.jpg",
+    imageUrl: require("../assets/default-song.png"),
   };
 
   const renderTrackItem = ({ item, index }: { item: Track; index: number }) => (
@@ -73,19 +82,19 @@ const AlbumDetailScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: COLORS.primary }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={COLORS.background} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Album Details</Text>
+        <Text style={[styles.headerTitle, { color: COLORS.background }]}>Album Details</Text>
       </View>
 
       <View style={styles.albumHeader}>
         <Image
-          source={{ uri: album.imageUrl }}
+          source={album.imageUrl}
           style={styles.albumCover}
           defaultSource={require("../assets/default-song.png")}
         />

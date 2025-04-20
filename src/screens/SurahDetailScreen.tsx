@@ -1,220 +1,68 @@
 "use client";
 
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
-  Alert,
-} from "react-native";
-import { Audio } from "expo-av";
-import { Ionicons } from "@expo/vector-icons";
-import { COLORS, SIZES, SHADOWS } from "../constants/theme";
-import { getSurah } from "../services/api";
-import { useRoute, useNavigation } from "@react-navigation/native";
+  ActivityIndicator,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { getSurah } from '../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { RootStackScreenProps } from '../types/navigation';
 
-interface RouteParams {
-  surahNumber: number;
-  surahName: string;
-  totalAyahs: number;
-}
+const { width } = Dimensions.get('window');
 
-interface Ayah {
+type Verse = {
   number: number;
   text: string;
-  translation?: string;
-  audio?: string;
-}
+  translation: string;
+};
 
-const SurahDetailScreen: React.FC = () => {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { surahNumber, surahName, totalAyahs } = route.params as RouteParams;
-
+const SurahDetailScreen = () => {
+  const navigation = useNavigation<RootStackScreenProps<'SurahDetailScreen'>['navigation']>();
+  const route = useRoute<RootStackScreenProps<'SurahDetailScreen'>['route']>();
+  const { surahNumber, surahName, totalAyahs } = route.params;
+  const [verses, setVerses] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [arabicText, setArabicText] = useState<Ayah[]>([]);
-  const [translation, setTranslation] = useState<Ayah[]>([]);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [playingAyah, setPlayingAyah] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadSurahContent();
-    return () => {
-      // Cleanup audio when component unmounts
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
+    loadSurahDetails();
   }, []);
 
-  const loadSurahContent = async () => {
+  const loadSurahDetails = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log(`Loading surah number: ${surahNumber}`);
-
-      // Load Arabic text
       const arabicData = await getSurah(surahNumber, "quran-uthmani");
-
-      if (!arabicData || !arabicData.ayahs) {
-        throw new Error("Failed to load Arabic text");
-      }
-
-      setArabicText(arabicData.ayahs);
-
-      // Load English translation
       const translationData = await getSurah(surahNumber, "en.asad");
-
-      if (translationData && translationData.ayahs) {
-        setTranslation(translationData.ayahs);
-      }
-
-      // Try to load audio data
-      try {
-        const audioData = await getSurah(surahNumber, "ar.alafasy");
-
-        if (audioData && audioData.ayahs) {
-          // Add audio URLs to the Arabic text
-          const ayahsWithAudio = arabicData.ayahs.map(
-            (ayah: Ayah, index: number) => ({
-              ...ayah,
-              audio: audioData.ayahs[index]?.audio,
-            })
-          );
-
-          setArabicText(ayahsWithAudio);
-        }
-      } catch (audioError) {
-        console.error("Error loading audio data:", audioError);
-        // Continue without audio if it fails
+      
+      if (arabicData?.ayahs && translationData?.ayahs) {
+        const formattedVerses = arabicData.ayahs.map((ayah, index) => ({
+          number: ayah.number,
+          text: ayah.text,
+          translation: translationData.ayahs[index]?.text || '',
+        }));
+        setVerses(formattedVerses);
       }
     } catch (error) {
-      console.error("Error loading surah content:", error);
-      setError("Failed to load surah content. Please try again later.");
+      console.error('Error loading surah details:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePlayPause = async (ayah: Ayah) => {
-    try {
-      // If there's already a sound playing
-      if (sound) {
-        // If it's the same ayah, pause it
-        if (playingAyah === ayah.number) {
-          await sound.pauseAsync();
-          setPlayingAyah(null);
-        } else {
-          // If it's a different ayah, stop current and play new
-          await sound.unloadAsync();
-          await playAyah(ayah);
-        }
-      } else {
-        // If no sound is playing, play the selected ayah
-        await playAyah(ayah);
-      }
-    } catch (error) {
-      console.error("Error handling audio:", error);
-    }
-  };
-
-  const playAyah = async (ayah: Ayah) => {
-    try {
-      if (!ayah.audio) {
-        Alert.alert(
-          "Audio not available",
-          "Audio for this verse is not available."
-        );
-        return;
-      }
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: ayah.audio },
-        { shouldPlay: true }
-      );
-
-      setSound(newSound);
-      setPlayingAyah(ayah.number);
-
-      // Listen for playback status
-      newSound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setPlayingAyah(null);
-          await newSound.unloadAsync();
-          setSound(null);
-        }
-      });
-    } catch (error) {
-      console.error("Error playing audio:", error);
-      Alert.alert("Error", "Failed to play audio. Please try again.");
-    }
-  };
-
-  console.log(surahName);
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.background} />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.surahName}>{surahName}</Text>
-            <Text style={styles.ayahCount}>Loading...</Text>
-          </View>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading surah content...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.background} />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.surahName}>{surahName}</Text>
-          </View>
-        </View>
-        <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={48}
-            color={COLORS.error}
-          />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={loadSurahContent}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.secondary]}
+        style={styles.headerGradient}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -223,51 +71,55 @@ const SurahDetailScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.surahName}>{surahName}</Text>
-          <Text style={styles.ayahCount}>{totalAyahs} Verses</Text>
+          <Text style={styles.verseCount}>{totalAyahs} Verses</Text>
         </View>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {surahNumber !== 9 && ( // Surah At-Tawbah (9) doesn't start with Bismillah
-          <View style={styles.bismillahContainer}>
-            <Text style={styles.bismillahText}>
-              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-            </Text>
-          </View>
-        )}
-
-        {arabicText.map((ayah, index) => (
-          <View key={ayah.number} style={styles.ayahContainer}>
-            <View style={styles.ayahHeader}>
-              <View style={styles.ayahNumberContainer}>
-                <Text style={styles.ayahNumber}>{ayah.number}</Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.playButton,
-                  playingAyah === ayah.number && styles.playingButton,
-                ]}
-                onPress={() => handlePlayPause(ayah)}
-              >
-                <Ionicons
-                  name={playingAyah === ayah.number ? "pause" : "play"}
-                  size={20}
-                  color={COLORS.primary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.arabicText}>{ayah.text}</Text>
-
-            {translation[index] && (
-              <Text style={styles.translationText}>
-                {translation[index].text}
-              </Text>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+      </LinearGradient>
     </View>
+  );
+
+  const renderVerse = ({ item }: { item: Verse }) => (
+    <View style={styles.verseCard}>
+      <View style={styles.verseNumberContainer}>
+        <Text style={styles.verseNumber}>{item.number}</Text>
+      </View>
+      <View style={styles.verseContent}>
+        <Text style={styles.arabicText}>{item.text}</Text>
+        <Text style={styles.translationText}>{item.translation}</Text>
+      </View>
+      <View style={styles.verseActions}>
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="play" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="bookmark-outline" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="share-outline" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading Surah...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {renderHeader()}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {verses.map((verse) => renderVerse({ item: verse }))}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -277,122 +129,107 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: COLORS.primary,
-    padding: SIZES.padding * 2,
-    flexDirection: "row",
-    alignItems: "center",
+    height: 160,
+    width: '100%',
+    marginTop: -60,
+  },
+  headerGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 80,
   },
   backButton: {
-    marginRight: SIZES.padding,
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    padding: 8,
   },
   headerContent: {
-    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   surahName: {
-    fontSize: SIZES.extraLarge,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: 'bold',
     color: COLORS.background,
+    marginBottom: 8,
   },
-  ayahCount: {
-    fontSize: SIZES.medium,
+  verseCount: {
+    fontSize: 16,
     color: COLORS.background,
     opacity: 0.8,
   },
-  content: {
-    flex: 1,
-    padding: SIZES.padding,
-  },
-  bismillahContainer: {
-    alignItems: "center",
-    paddingVertical: SIZES.padding * 2,
-    marginBottom: SIZES.padding,
-  },
-  bismillahText: {
-    fontSize: SIZES.extraLarge * 1.2,
-    color: COLORS.primary,
-    textAlign: "center",
-  },
-  ayahContainer: {
-    backgroundColor: COLORS.background,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: SIZES.padding,
-    ...SHADOWS.light,
-  },
-  ayahHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SIZES.padding,
-  },
-  ayahNumberContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: `${COLORS.primary}20`,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  ayahNumber: {
-    fontSize: SIZES.medium,
-    fontWeight: "600",
-    color: COLORS.primary,
-  },
-  playButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: `${COLORS.primary}10`,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  playingButton: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  arabicText: {
-    fontSize: SIZES.extraLarge,
-    color: COLORS.text,
-    textAlign: "right",
-    lineHeight: SIZES.extraLarge * 2,
-    marginBottom: SIZES.padding,
-  },
-  translationText: {
-    fontSize: SIZES.medium,
-    color: COLORS.textSecondary,
-    lineHeight: SIZES.large * 1.5,
-  },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: SIZES.medium,
+    marginTop: 12,
+    fontSize: 16,
     color: COLORS.text,
   },
-  errorContainer: {
+  scrollView: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: SIZES.padding * 2,
+    backgroundColor: COLORS.background,
   },
-  errorText: {
-    fontSize: SIZES.medium,
-    color: COLORS.text,
-    textAlign: "center",
-    marginVertical: SIZES.padding,
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    paddingTop: 16,
   },
-  retryButton: {
+  verseCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 16,
+    ...SHADOWS.medium,
+  },
+  verseNumberContainer: {
+    position: 'absolute',
+    top: -12,
+    left: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: SIZES.padding * 2,
-    paddingVertical: SIZES.padding,
-    borderRadius: SIZES.radius,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
   },
-  retryButtonText: {
+  verseNumber: {
+    fontSize: 12,
+    fontWeight: 'bold',
     color: COLORS.background,
-    fontSize: SIZES.medium,
-    fontWeight: "600",
+  },
+  verseContent: {
+    padding: 16,
+    paddingTop: 24,
+  },
+  arabicText: {
+    fontSize: 24,
+    color: COLORS.text,
+    textAlign: 'right',
+    marginBottom: 12,
+    fontFamily: 'Amiri-Regular',
+    lineHeight: 40,
+  },
+  translationText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    lineHeight: 24,
+  },
+  verseActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: `${COLORS.textSecondary}15`,
+  },
+  actionButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 });
 

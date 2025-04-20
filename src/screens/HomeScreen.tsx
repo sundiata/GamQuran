@@ -12,6 +12,7 @@ import {
   TextInput,
   Animated,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
@@ -446,7 +447,7 @@ export default function HomeScreen({ navigation }) {
             { backgroundColor: colors.cardBackground },
           ]}
         >
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.background} />
           <Text style={[styles.searchingText, { color: colors.textSecondary }]}>
             Searching...
           </Text>
@@ -507,16 +508,10 @@ export default function HomeScreen({ navigation }) {
   if (isLoading) {
     return (
       <SafeAreaView
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: colors.background },
-        ]}
+        style={[styles.loadingContainer, { backgroundColor: colors.primary }]}
+        edges={['top', 'left', 'right']}
       >
-        <StatusBar
-          barStyle={isDarkMode ? "light-content" : "dark-content"}
-          backgroundColor={colors.headerBackground}
-        />
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.background} />
         <Text style={[styles.loadingText, { color: colors.primary }]}>
           Loading...
         </Text>
@@ -526,589 +521,587 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.primary }]}
+      edges={['top', 'left', 'right']}
     >
-      <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={colors.headerBackground}
-      />
-
-      {/* Header with Search */}
-      <View
-        style={[styles.header, { backgroundColor: colors.headerBackground }]}
-      >
-        {/* Top Header Row */}
-        <View style={styles.headerTopRow}>
-          <View>
-            <Text style={[styles.islamicDate, { color: colors.textLight }]}>
-              {islamicDate}
-            </Text>
-            <Text style={[styles.location, { color: colors.textLight }]}>
-              {location}
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={colors.textLight}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={colors.textLight}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={[styles.searchInput, { color: colors.textLight }]}
-            placeholder="Search surah, narrators or keywords"
-            placeholderTextColor="rgba(255, 255, 255, 0.7)"
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              style={styles.clearSearchButton}
-              onPress={() => {
-                setSearchQuery("");
-                setSearchResults([]);
-              }}
-            >
+      <View style={{ flex: 1, backgroundColor: colors.primary }}>
+        {/* Header with Search */}
+        <View
+          style={[styles.header, { backgroundColor: colors.primary }]}
+        >
+          {/* Top Header Row */}
+          <View style={styles.headerTopRow}>
+            <View>
+              <Text style={[styles.islamicDate, { color: colors.background }]}>
+                {islamicDate}
+              </Text>
+              <Text style={[styles.location, { color: colors.background }]}>
+                {location}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.notificationButton}>
               <Ionicons
-                name="close-circle"
-                size={20}
-                color={colors.textLight}
+                name="notifications-outline"
+                size={24}
+                color={colors.background}
               />
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
 
-        {/* Search Results */}
-        {renderSearchResults()}
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Current Time Display */}
-        <View
-          style={[
-            styles.timeDisplay,
-            { backgroundColor: colors.headerBackground },
-          ]}
-        >
-          <Text style={[styles.currentTime, { color: colors.textLight }]}>
-            {currentTime}
-          </Text>
-          <Text style={[styles.timeInfo, { color: colors.textLight }]}>
-            {nextPrayer.name} · {countdown} left
-          </Text>
-
-          {/* Prayer Times Row */}
-          <View style={styles.prayerTimesRow}>
-            {prayerTimes.map((prayer, index) => (
-              <View key={index} style={styles.prayerTimeItem}>
-                <Feather
-                  name={prayer.icon}
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Ionicons
+              name="search"
+              size={20}
+              color={colors.background}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={[styles.searchInput, { color: colors.background }]}
+              placeholder="Search surah, narrators or keywords"
+              placeholderTextColor="rgba(255, 255, 255, 0.7)"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearSearchButton}
+                onPress={() => {
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+              >
+                <Ionicons
+                  name="close-circle"
                   size={20}
-                  color={colors.textLight}
+                  color={colors.background}
                 />
-                <Text
-                  style={[styles.prayerTimeLabel, { color: colors.textLight }]}
-                >
-                  {prayer.name}
-                </Text>
-                <Text
-                  style={[styles.prayerTimeValue, { color: colors.textLight }]}
-                >
-                  {prayer.formattedTime}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Indicator */}
-          <View style={styles.indicator}>
-            <View
-              style={[
-                styles.indicatorDot,
-                { backgroundColor: colors.secondary },
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* All Features */}
-        <View
-          style={[
-            styles.featuresSection,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            All Features
-          </Text>
-          <View style={styles.featuresGrid}>
-            {renderFeatureButton(
-              <Ionicons
-                name="book-outline"
-                size={24}
-                color={colors.textLight}
-              />,
-              "Quran",
-              "Quran"
-            )}
-            {renderFeatureButton(
-              <Ionicons
-                name="volume-high-outline"
-                size={24}
-                color={colors.textLight}
-              />,
-              "Adzan",
-              "Adzan"
-            )}
-            {renderFeatureButton(
-              <Ionicons
-                name="compass-outline"
-                size={24}
-                color={colors.textLight}
-              />,
-              "Qibla",
-              "Qibla"
-            )}
-            {renderFeatureButton(
-              <Ionicons
-                name="heart-outline"
-                size={24}
-                color={colors.textLight}
-              />,
-              "Donation",
-              "Donation"
-            )}
-            {renderFeatureButton(
-              <Ionicons
-                name="grid-outline"
-                size={24}
-                color={colors.textLight}
-              />,
-              "All",
-              "AllFeatures"
+              </TouchableOpacity>
             )}
           </View>
+
+          {/* Search Results */}
+          {renderSearchResults()}
         </View>
 
-        {/* Favorites */}
-        <View
-          style={[
-            styles.favoritesSection,
-            { backgroundColor: colors.background },
-          ]}
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            Favourites
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.favoritesContainer}
-          >
-            <TouchableOpacity
-              style={[
-                styles.favoriteChip,
-                { backgroundColor: colors.primaryTransparent },
-              ]}
-              onPress={() =>
-                navigation.navigate("SurahDetailScreen", {
-                  surahNumber: 67,
-                  surahName: "Al-Mulk",
-                })
-              }
-            >
-              <Text
-                style={[styles.favoriteChipText, { color: colors.primary }]}
-              >
-                67. Al-Mulk
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.favoriteChip,
-                { backgroundColor: colors.primaryTransparent },
-              ]}
-              onPress={() =>
-                navigation.navigate("SurahDetailScreen", {
-                  surahNumber: 2,
-                  surahName: "Al-Baqarah",
-                })
-              }
-            >
-              <Text
-                style={[styles.favoriteChipText, { color: colors.primary }]}
-              >
-                2. Al-Baqarah
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.favoriteChip,
-                { backgroundColor: colors.primaryTransparent },
-              ]}
-              onPress={() =>
-                navigation.navigate("SurahDetailScreen", {
-                  surahNumber: 19,
-                  surahName: "Maryam",
-                })
-              }
-            >
-              <Text
-                style={[styles.favoriteChipText, { color: colors.primary }]}
-              >
-                19. Maryam
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-
-        {/* Continue Listening */}
-        <View
-          style={[
-            styles.continueListeningSection,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Continue Listening
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.continueListeningCard,
-              { backgroundColor: colors.cardBackground },
-            ]}
-            onPress={() =>
-              navigation.navigate("NowPlayingScreen", {
-                song: {
-                  title: "2. Al-Baqarah",
-                  artist: "Sheikh Mishary",
-                  imageUrl: "https://placeholder-images.com/surahs/alBaqarah",
-                },
-              })
-            }
-          >
-            <Image
-              source={{
-                uri: "https://placeholder-images.com/surahs/alBaqarah",
-              }}
-              style={[
-                styles.surahThumbnail,
-                { backgroundColor: colors.primaryTransparent },
-              ]}
-            />
-            <View style={styles.continueListeningInfo}>
-              <Text
-                style={[styles.continueListeningTitle, { color: colors.text }]}
-              >
-                2. Al-Baqarah
-              </Text>
-              <Text
-                style={[
-                  styles.continueListeningSubtitle,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                The Cow
-              </Text>
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: "22%", backgroundColor: colors.primary },
-                    ]}
-                  />
-                </View>
-                <Text
-                  style={[styles.progressText, { color: colors.textSecondary }]}
-                >
-                  18:00/88:00
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.playButton,
-                { backgroundColor: colors.secondaryTransparent },
-              ]}
-            >
-              <Ionicons name="play" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </View>
-
-        {/* Daily Prayers */}
-        <View
-          style={[
-            styles.dailyPrayersSection,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Daily Prayers
-            </Text>
-            <TouchableOpacity onPress={navigateToPrayerTimes}>
-              <Text style={[styles.viewAllText, { color: colors.primary }]}>
-                View All
-              </Text>
-            </TouchableOpacity>
-          </View>
-
+          {/* Current Time Display */}
           <View
             style={[
-              styles.prayersListContainer,
-              { backgroundColor: colors.cardBackground },
+              styles.timeDisplay,
+              { backgroundColor: colors.headerBackground },
             ]}
           >
-            {prayerTimes.map((prayer, index) => {
-              const statusStyle = getPrayerStatusStyle(prayer.status);
-              const isNext = prayer.status === "next";
+            <Text style={[styles.currentTime, { color: colors.textLight }]}>
+              {currentTime}
+            </Text>
+            <Text style={[styles.timeInfo, { color: colors.textLight }]}>
+              {nextPrayer.name} · {countdown} left
+            </Text>
 
-              // Create animated styles for the "next" prayer
-              const animatedStyle = isNext
-                ? {
-                    transform: [
-                      {
-                        scale: animation.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [1, 1.03],
-                        }),
-                      },
-                    ],
-                    shadowOpacity: animation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.1, 0.3],
-                    }),
-                  }
-                : {};
+            {/* Prayer Times Row */}
+            <View style={styles.prayerTimesRow}>
+              {prayerTimes.map((prayer, index) => (
+                <View key={index} style={styles.prayerTimeItem}>
+                  <Feather
+                    name={prayer.icon}
+                    size={20}
+                    color={colors.textLight}
+                  />
+                  <Text
+                    style={[styles.prayerTimeLabel, { color: colors.textLight }]}
+                  >
+                    {prayer.name}
+                  </Text>
+                  <Text
+                    style={[styles.prayerTimeValue, { color: colors.textLight }]}
+                  >
+                    {prayer.formattedTime}
+                  </Text>
+                </View>
+              ))}
+            </View>
 
-              return (
-                <Animated.View
-                  key={index}
+            {/* Indicator */}
+            <View style={styles.indicator}>
+              <View
+                style={[
+                  styles.indicatorDot,
+                  { backgroundColor: colors.secondary },
+                ]}
+              />
+            </View>
+          </View>
+
+          {/* All Features */}
+          <View
+            style={[
+              styles.featuresSection,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              All Features
+            </Text>
+            <View style={styles.featuresGrid}>
+              {renderFeatureButton(
+                <Ionicons
+                  name="book-outline"
+                  size={24}
+                  color={colors.textLight}
+                />,
+                "Quran",
+                "Quran"
+              )}
+              {renderFeatureButton(
+                <Ionicons
+                  name="volume-high-outline"
+                  size={24}
+                  color={colors.textLight}
+                />,
+                "Adzan",
+                "Adzan"
+              )}
+              {renderFeatureButton(
+                <Ionicons
+                  name="compass-outline"
+                  size={24}
+                  color={colors.textLight}
+                />,
+                "Qibla",
+                "Qibla"
+              )}
+              {renderFeatureButton(
+                <Ionicons
+                  name="heart-outline"
+                  size={24}
+                  color={colors.textLight}
+                />,
+                "Donation",
+                "Donation"
+              )}
+              {renderFeatureButton(
+                <Ionicons
+                  name="grid-outline"
+                  size={24}
+                  color={colors.textLight}
+                />,
+                "All",
+                "AllFeatures"
+              )}
+            </View>
+          </View>
+
+          {/* Favorites */}
+          <View
+            style={[
+              styles.favoritesSection,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Text style={[styles.sectionLabel, { color: colors.text }]}>
+              Favourites
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.favoritesContainer}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.favoriteChip,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+                onPress={() =>
+                  navigation.navigate("SurahDetailScreen", {
+                    surahNumber: 67,
+                    surahName: "Al-Mulk",
+                  })
+                }
+              >
+                <Text
+                  style={[styles.favoriteChipText, { color: colors.primary }]}
+                >
+                  67. Al-Mulk
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.favoriteChip,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+                onPress={() =>
+                  navigation.navigate("SurahDetailScreen", {
+                    surahNumber: 2,
+                    surahName: "Al-Baqarah",
+                  })
+                }
+              >
+                <Text
+                  style={[styles.favoriteChipText, { color: colors.primary }]}
+                >
+                  2. Al-Baqarah
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.favoriteChip,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+                onPress={() =>
+                  navigation.navigate("SurahDetailScreen", {
+                    surahNumber: 19,
+                    surahName: "Maryam",
+                  })
+                }
+              >
+                <Text
+                  style={[styles.favoriteChipText, { color: colors.primary }]}
+                >
+                  19. Maryam
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* Continue Listening */}
+          <View
+            style={[
+              styles.continueListeningSection,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Continue Listening
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.continueListeningCard,
+                { backgroundColor: colors.cardBackground },
+              ]}
+              onPress={() =>
+                navigation.navigate("NowPlayingScreen", {
+                  song: {
+                    title: "2. Al-Baqarah",
+                    artist: "Sheikh Mishary",
+                    imageUrl: "https://placeholder-images.com/surahs/alBaqarah",
+                  },
+                })
+              }
+            >
+              <Image
+                source={{
+                  uri: "https://placeholder-images.com/surahs/alBaqarah",
+                }}
+                style={[
+                  styles.surahThumbnail,
+                  { backgroundColor: colors.primaryTransparent },
+                ]}
+              />
+              <View style={styles.continueListeningInfo}>
+                <Text
+                  style={[styles.continueListeningTitle, { color: colors.text }]}
+                >
+                  2. Al-Baqarah
+                </Text>
+                <Text
                   style={[
-                    styles.enhancedPrayerItem,
-                    isNext && styles.nextPrayerItem,
-                    { borderBottomColor: colors.divider },
-                    animatedStyle,
+                    styles.continueListeningSubtitle,
+                    { color: colors.textSecondary },
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.prayerIconContainer,
-                      { backgroundColor: "rgba(0, 0, 0, 0.05)" },
-                    ]}
-                  >
-                    <Feather
-                      name={prayer.icon}
-                      size={24}
-                      color={isNext ? colors.secondary : colors.primary}
+                  The Cow
+                </Text>
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: "22%", backgroundColor: colors.primary },
+                      ]}
                     />
                   </View>
-                  <View style={styles.prayerNameTime}>
-                    <Text
-                      style={[
-                        styles.prayerName,
-                        { color: colors.text },
-                        isNext && [
-                          styles.nextPrayerText,
-                          { color: colors.primary },
-                        ],
-                      ]}
-                    >
-                      {prayer.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.prayerSchedule,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {prayer.formattedTime}
-                    </Text>
-                  </View>
-                  <View
+                  <Text
+                    style={[styles.progressText, { color: colors.textSecondary }]}
+                  >
+                    18:00/88:00
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.playButton,
+                  { backgroundColor: colors.secondaryTransparent },
+                ]}
+              >
+                <Ionicons name="play" size={24} color={colors.primary} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+
+          {/* Daily Prayers */}
+          <View
+            style={[
+              styles.dailyPrayersSection,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Daily Prayers
+              </Text>
+              <TouchableOpacity onPress={navigateToPrayerTimes}>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                  View All
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={[
+                styles.prayersListContainer,
+                { backgroundColor: colors.cardBackground },
+              ]}
+            >
+              {prayerTimes.map((prayer, index) => {
+                const statusStyle = getPrayerStatusStyle(prayer.status);
+                const isNext = prayer.status === "next";
+
+                // Create animated styles for the "next" prayer
+                const animatedStyle = isNext
+                  ? {
+                      transform: [
+                        {
+                          scale: animation.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1, 1.03],
+                          }),
+                        },
+                      ],
+                      shadowOpacity: animation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.1, 0.3],
+                      }),
+                    }
+                  : {};
+
+                return (
+                  <Animated.View
+                    key={index}
                     style={[
-                      styles.prayerStatus,
-                      { backgroundColor: statusStyle.backgroundColor },
+                      styles.enhancedPrayerItem,
+                      isNext && styles.nextPrayerItem,
+                      { borderBottomColor: colors.divider },
+                      animatedStyle,
                     ]}
                   >
-                    <Text
-                      style={[styles.statusText, { color: statusStyle.color }]}
+                    <View
+                      style={[
+                        styles.prayerIconContainer,
+                        { backgroundColor: "rgba(0, 0, 0, 0.05)" },
+                      ]}
                     >
-                      {statusStyle.text}
-                    </Text>
-                  </View>
-                </Animated.View>
-              );
-            })}
+                      <Feather
+                        name={prayer.icon}
+                        size={24}
+                        color={isNext ? colors.secondary : colors.primary}
+                      />
+                    </View>
+                    <View style={styles.prayerNameTime}>
+                      <Text
+                        style={[
+                          styles.prayerName,
+                          { color: colors.text },
+                          isNext && [
+                            styles.nextPrayerText,
+                            { color: colors.primary },
+                          ],
+                        ]}
+                      >
+                        {prayer.name}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.prayerSchedule,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {prayer.formattedTime}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.prayerStatus,
+                        { backgroundColor: statusStyle.backgroundColor },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.statusText, { color: statusStyle.color }]}
+                      >
+                        {statusStyle.text}
+                      </Text>
+                    </View>
+                  </Animated.View>
+                );
+              })}
+            </View>
           </View>
-        </View>
 
-        {/* Recent Audios */}
-        <View
-          style={[
-            styles.recentAudiosContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Recent Audios
-            </Text>
-            <TouchableOpacity onPress={navigateToAudios}>
-              <Text style={[styles.viewAllText, { color: colors.primary }]}>
-                See All
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.recentAudiosScroll}
+          {/* Recent Audios */}
+          <View
+            style={[
+              styles.recentAudiosContainer,
+              { backgroundColor: colors.background },
+            ]}
           >
-            <TouchableOpacity
-              style={[
-                styles.audioCard,
-                { backgroundColor: colors.cardBackground },
-              ]}
-              onPress={() =>
-                navigation.navigate("NowPlayingScreen", {
-                  song: {
-                    title: "Surah Al-Fatiha",
-                    artist: "Mishary Rashid",
-                    imageUrl:
-                      "https://placeholder-images.com/reciters/misharyRashid",
-                  },
-                })
-              }
-            >
-              <View
-                style={[
-                  styles.reciterImageContainer,
-                  { backgroundColor: colors.primaryTransparent },
-                ]}
-              >
-                <Image
-                  source={{
-                    uri: "https://placeholder-images.com/reciters/misharyRashid",
-                  }}
-                  style={styles.reciterImage}
-                />
-              </View>
-              <View style={styles.audioInfo}>
-                <Text style={[styles.reciterName, { color: colors.text }]}>
-                  Mishary Rashid
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Recent Audios
+              </Text>
+              <TouchableOpacity onPress={navigateToAudios}>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                  See All
                 </Text>
-                <Text
-                  style={[styles.surahName, { color: colors.textSecondary }]}
-                >
-                  Surah Al-Fatiha
-                </Text>
-              </View>
-              <Ionicons name="play-circle" size={24} color={colors.primary} />
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={[
-                styles.audioCard,
-                { backgroundColor: colors.cardBackground },
-              ]}
-              onPress={() =>
-                navigation.navigate("NowPlayingScreen", {
-                  song: {
-                    title: "Surah Al-Baqarah",
-                    artist: "Abdul Rahman",
-                    imageUrl:
-                      "https://placeholder-images.com/reciters/abdulRahman",
-                  },
-                })
-              }
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.recentAudiosScroll}
             >
-              <View
+              <TouchableOpacity
                 style={[
-                  styles.reciterImageContainer,
-                  { backgroundColor: colors.primaryTransparent },
+                  styles.audioCard,
+                  { backgroundColor: colors.cardBackground },
                 ]}
+                onPress={() =>
+                  navigation.navigate("NowPlayingScreen", {
+                    song: {
+                      title: "Surah Al-Fatiha",
+                      artist: "Mishary Rashid",
+                      imageUrl:
+                        "https://placeholder-images.com/reciters/misharyRashid",
+                    },
+                  })
+                }
               >
-                <Image
-                  source={{
-                    uri: "https://placeholder-images.com/reciters/abdulRahman",
-                  }}
-                  style={styles.reciterImage}
-                />
-              </View>
-              <View style={styles.audioInfo}>
-                <Text style={[styles.reciterName, { color: colors.text }]}>
-                  Abdul Rahman
-                </Text>
-                <Text
-                  style={[styles.surahName, { color: colors.textSecondary }]}
+                <View
+                  style={[
+                    styles.reciterImageContainer,
+                    { backgroundColor: colors.primaryTransparent },
+                  ]}
                 >
-                  Surah Al-Baqarah
-                </Text>
-              </View>
-              <Ionicons name="play-circle" size={24} color={colors.primary} />
-            </TouchableOpacity>
+                  <Image
+                    source={{
+                      uri: "https://placeholder-images.com/reciters/misharyRashid",
+                    }}
+                    style={styles.reciterImage}
+                  />
+                </View>
+                <View style={styles.audioInfo}>
+                  <Text style={[styles.reciterName, { color: colors.text }]}>
+                    Mishary Rashid
+                  </Text>
+                  <Text
+                    style={[styles.surahName, { color: colors.textSecondary }]}
+                  >
+                    Surah Al-Fatiha
+                  </Text>
+                </View>
+                <Ionicons name="play-circle" size={24} color={colors.primary} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.audioCard,
-                { backgroundColor: colors.cardBackground },
-              ]}
-              onPress={() =>
-                navigation.navigate("NowPlayingScreen", {
-                  song: {
-                    title: "Surah Yasin",
-                    artist: "Maher Al Muaiqly",
-                    imageUrl:
-                      "https://placeholder-images.com/reciters/maherMuaiqly",
-                  },
-                })
-              }
-            >
-              <View
+              <TouchableOpacity
                 style={[
-                  styles.reciterImageContainer,
-                  { backgroundColor: colors.primaryTransparent },
+                  styles.audioCard,
+                  { backgroundColor: colors.cardBackground },
                 ]}
+                onPress={() =>
+                  navigation.navigate("NowPlayingScreen", {
+                    song: {
+                      title: "Surah Al-Baqarah",
+                      artist: "Abdul Rahman",
+                      imageUrl:
+                        "https://placeholder-images.com/reciters/abdulRahman",
+                    },
+                  })
+                }
               >
-                <Image
-                  source={{
-                    uri: "https://placeholder-images.com/reciters/maherMuaiqly",
-                  }}
-                  style={styles.reciterImage}
-                />
-              </View>
-              <View style={styles.audioInfo}>
-                <Text style={[styles.reciterName, { color: colors.text }]}>
-                  Maher Al Muaiqly
-                </Text>
-                <Text
-                  style={[styles.surahName, { color: colors.textSecondary }]}
+                <View
+                  style={[
+                    styles.reciterImageContainer,
+                    { backgroundColor: colors.primaryTransparent },
+                  ]}
                 >
-                  Surah Yasin
-                </Text>
-              </View>
-              <Ionicons name="play-circle" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </ScrollView>
+                  <Image
+                    source={{
+                      uri: "https://placeholder-images.com/reciters/abdulRahman",
+                    }}
+                    style={styles.reciterImage}
+                  />
+                </View>
+                <View style={styles.audioInfo}>
+                  <Text style={[styles.reciterName, { color: colors.text }]}>
+                    Abdul Rahman
+                  </Text>
+                  <Text
+                    style={[styles.surahName, { color: colors.textSecondary }]}
+                  >
+                    Surah Al-Baqarah
+                  </Text>
+                </View>
+                <Ionicons name="play-circle" size={24} color={colors.primary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.audioCard,
+                  { backgroundColor: colors.cardBackground },
+                ]}
+                onPress={() =>
+                  navigation.navigate("NowPlayingScreen", {
+                    song: {
+                      title: "Surah Yasin",
+                      artist: "Maher Al Muaiqly",
+                      imageUrl:
+                        "https://placeholder-images.com/reciters/maherMuaiqly",
+                    },
+                  })
+                }
+              >
+                <View
+                  style={[
+                    styles.reciterImageContainer,
+                    { backgroundColor: colors.primaryTransparent },
+                  ]}
+                >
+                  <Image
+                    source={{
+                      uri: "https://placeholder-images.com/reciters/maherMuaiqly",
+                    }}
+                    style={styles.reciterImage}
+                  />
+                </View>
+                <View style={styles.audioInfo}>
+                  <Text style={[styles.reciterName, { color: colors.text }]}>
+                    Maher Al Muaiqly
+                  </Text>
+                  <Text
+                    style={[styles.surahName, { color: colors.textSecondary }]}
+                  >
+                    Surah Yasin
+                  </Text>
+                </View>
+                <Ionicons name="play-circle" size={24} color={colors.primary} />
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

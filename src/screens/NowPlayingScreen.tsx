@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,32 +14,41 @@ import { COLORS, SIZES } from "../constants/theme";
 
 const { width } = Dimensions.get("window");
 
+interface Song {
+  title: string;
+  artist: string;
+  imageUrl: ImageSourcePropType;
+}
+
 const NowPlayingScreen = ({ navigation, route }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0.3);
 
   // Extract song data safely with defaults
-  const song = route.params?.song || {};
+  const song = route.params?.song || {
+    title: "Unknown Title",
+    artist: "Unknown Artist",
+    imageUrl: require("../assets/default-song.png"),
+  };
   const songTitle = song?.title || "Unknown Title";
   const artistName = song?.artist || "Unknown Artist";
-  const imageUrl = song?.imageUrl || "https://example.com/artwork.jpg";
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: COLORS.primary }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-down" size={32} color={COLORS.text} />
+          <Ionicons name="chevron-down" size={32} color={COLORS.background} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>NOW PLAYING</Text>
+        <Text style={[styles.headerTitle, { color: COLORS.background }]}>NOW PLAYING</Text>
         <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
+          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.background} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
         <View style={styles.artworkContainer}>
           <Image
-            source={{ uri: imageUrl }}
+            source={song.imageUrl}
             style={styles.artwork}
             defaultSource={require("../assets/default-song.png")}
           />

@@ -6,11 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { COLORS, SIZES, SHADOWS } from "../constants/theme";
 import { getSurahs, Surah } from "../services/api";
+import { LinearGradient } from "expo-linear-gradient";
 
 type QuranStackParamList = {
   QuranList: undefined;
@@ -25,6 +28,7 @@ const QuranScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<QuranStackParamList>>();
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [loading, setLoading] = useState(true);
+  const scrollY = new Animated.Value(0);
 
   useEffect(() => {
     loadSurahs();
@@ -49,51 +53,87 @@ const QuranScreen: React.FC = () => {
     });
   };
 
-  const renderSurahItem = ({ item }: { item: Surah }) => (
-    <TouchableOpacity
-      style={styles.surahCard}
-      onPress={() => handleSurahPress(item)}
-    >
-      <View style={styles.surahNumberContainer}>
-        <Text style={styles.surahNumber}>{item.number}</Text>
-      </View>
-      <View style={styles.surahInfo}>
-        <View>
-          <Text style={styles.surahName}>{item.englishName}</Text>
-          <Text style={styles.surahTranslation}>
-            {item.englishNameTranslation}
-          </Text>
-        </View>
-        <View style={styles.surahMetadata}>
-          <Text style={styles.surahType}>{item.revelationType}</Text>
-          <Text style={styles.versesCount}>{item.numberOfAyahs} verses</Text>
-        </View>
-      </View>
-      <Text style={styles.arabicName}>{item.name}</Text>
-    </TouchableOpacity>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.secondary]}
+        style={styles.headerGradient}
+      >
+        <Text style={styles.headerTitle}>The Holy Quran</Text>
+        <Text style={styles.headerSubtitle}>Read and listen to the Quran</Text>
+      </LinearGradient>
+    </View>
   );
+
+  const renderSurahItem = ({ item, index }: { item: Surah; index: number }) => {
+    const inputRange = [-1, 0, 100 * index, 100 * (index + 2)];
+    const scale = scrollY.interpolate({
+      inputRange,
+      outputRange: [1, 1, 1, 0],
+    });
+    const opacity = scrollY.interpolate({
+      inputRange,
+      outputRange: [1, 1, 1, 0],
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.surahCard,
+          {
+            transform: [{ scale }],
+            opacity,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.surahCardContent}
+          onPress={() => handleSurahPress(item)}
+        >
+          <View style={styles.surahNumberContainer}>
+            <Text style={styles.surahNumber}>{item.number}</Text>
+          </View>
+          <View style={styles.surahInfo}>
+            <View>
+              <Text style={styles.surahName}>{item.englishName}</Text>
+              <Text style={styles.surahTranslation}>
+                {item.englishNameTranslation}
+              </Text>
+            </View>
+            <View style={styles.surahMetadata}>
+              <Text style={styles.surahType}>{item.revelationType}</Text>
+              <Text style={styles.versesCount}>{item.numberOfAyahs} verses</Text>
+            </View>
+          </View>
+          <Text style={styles.arabicName}>{item.name}</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading Surahs...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>The Holy Quran</Text>
-        <Text style={styles.headerSubtitle}>114 Surahs</Text>
-      </View>
-
-      <FlatList
+      {renderHeader()}
+      <Animated.FlatList
         data={surahs}
         renderItem={renderSurahItem}
         keyExtractor={(item) => item.number.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       />
     </View>
   );
@@ -105,83 +145,103 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: COLORS.primary,
-    padding: SIZES.padding * 2,
-    alignItems: "center",
+    height: 140,
+    marginBottom: 16,
+  },
+  headerGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   headerTitle: {
-    fontSize: SIZES.extraLarge,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: 'bold',
     color: COLORS.background,
-    marginBottom: SIZES.base,
+    marginBottom: 6,
   },
   headerSubtitle: {
-    fontSize: SIZES.medium,
+    fontSize: 14,
     color: COLORS.background,
     opacity: 0.8,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: COLORS.text,
+  },
   listContainer: {
-    padding: SIZES.padding,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   surahCard: {
+    marginBottom: 16,
+    borderRadius: 16,
     backgroundColor: COLORS.background,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: SIZES.padding,
-    flexDirection: "row",
-    alignItems: "center",
-    ...SHADOWS.light,
+    ...SHADOWS.medium,
+  },
+  surahCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 16,
   },
   surahNumberContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${COLORS.primary}20`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SIZES.padding,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
   surahNumber: {
-    fontSize: SIZES.medium,
-    fontWeight: "600",
-    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.background,
   },
   surahInfo: {
     flex: 1,
-    marginRight: SIZES.padding,
   },
   surahName: {
-    fontSize: SIZES.large,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   surahTranslation: {
-    fontSize: SIZES.small,
+    fontSize: 14,
     color: COLORS.textSecondary,
-    marginBottom: SIZES.base,
+    marginBottom: 8,
   },
   surahMetadata: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   surahType: {
-    fontSize: SIZES.small,
+    fontSize: 12,
     color: COLORS.primary,
-    backgroundColor: `${COLORS.primary}10`,
-    paddingHorizontal: SIZES.base,
-    paddingVertical: 2,
-    borderRadius: SIZES.radius / 2,
-    marginRight: SIZES.base,
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginRight: 8,
   },
   versesCount: {
-    fontSize: SIZES.small,
+    fontSize: 12,
     color: COLORS.textSecondary,
   },
   arabicName: {
-    fontSize: SIZES.large,
+    fontSize: 24,
     color: COLORS.primary,
-    fontWeight: "600",
+    fontFamily: 'Amiri-Regular',
   },
 });
 

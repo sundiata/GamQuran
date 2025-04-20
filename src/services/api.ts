@@ -340,3 +340,39 @@ const getDefaultPrayerTimes = () => {
 //     return [];
 //   }
 // };
+
+export const getQuranReciters = async () => {
+  try {
+    const response = await fetch('https://api.alquran.cloud/v1/edition?format=audio&language=en');
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error fetching Quran reciters:', error);
+    return [];
+  }
+};
+
+export const getQuranAudioUrl = async (reciterId: string, surahNumber: number) => {
+  try {
+    // Using the EveryAyah API which provides more reliable audio URLs
+    const response = await fetch(`https://everyayah.com/data/${reciterId}/${surahNumber}.mp3`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.url;
+  } catch (error) {
+    console.error('Error fetching Quran audio:', error);
+    // Fallback to Al-Quran Cloud API if EveryAyah fails
+    try {
+      const fallbackUrl = `https://cdn.alquran.cloud/media/audio/ayah/${reciterId}/${surahNumber}`;
+      const fallbackResponse = await fetch(fallbackUrl);
+      if (!fallbackResponse.ok) {
+        throw new Error(`Fallback API error! status: ${fallbackResponse.status}`);
+      }
+      return fallbackUrl;
+    } catch (fallbackError) {
+      console.error('Error with fallback audio URL:', fallbackError);
+      return null;
+    }
+  }
+};

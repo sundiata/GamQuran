@@ -12,23 +12,39 @@ import AudioScreen from "../screens/AudioScreen";
 import NowPlayingScreen from "../screens/NowPlayingScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import AlbumDetailScreen from "../screens/AlbumDetailScreen";
+import AudioDetailsScreen from "../screens/AudioDetailsScreen";
+import IslamicEventsScreen from "../screens/IslamicEventsScreen";
+import EventPaymentScreen from "../screens/EventPaymentScreen";
+import EventQRCodeScreen from "../screens/EventQRCodeScreen";
 import { COLORS, SIZES } from "../constants/theme";
 
 const Tab = createBottomTabNavigator();
 const QuranStack = createNativeStackNavigator();
 const AudioStack = createNativeStackNavigator();
+const EventsStack = createNativeStackNavigator();
 
 const QuranNavigator = () => {
   return (
     <QuranStack.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.background,
+        headerTitle: '',
+        contentStyle: {
+          backgroundColor: COLORS.primary,
+        }
       }}
     >
       <QuranStack.Screen name="QuranList" component={QuranScreen} />
       <QuranStack.Screen
         name="SurahDetailScreen"
         component={SurahDetailScreen}
+        options={{
+          headerShown: false,
+        }}
       />
     </QuranStack.Navigator>
   );
@@ -38,21 +54,59 @@ const AudioNavigator = () => {
   return (
     <AudioStack.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.background,
+        headerTitle: '',
+        contentStyle: {
+          backgroundColor: COLORS.primary,
+        }
       }}
     >
       <AudioStack.Screen name="AudioList" component={AudioScreen} />
       <AudioStack.Screen
         name="NowPlayingScreen"
+        component={NowPlayingScreen}
+      />
+      <AudioStack.Screen
+        name="AudioDetailsScreen"
+        component={AudioDetailsScreen}
+      />
+      <AudioStack.Screen
+        name="AlbumDetail"
         component={AlbumDetailScreen}
       />
     </AudioStack.Navigator>
   );
 };
 
+const EventsNavigator = () => {
+  return (
+    <EventsStack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.background,
+        headerTitle: '',
+        contentStyle: {
+          backgroundColor: COLORS.primary,
+        }
+      }}
+    >
+      <EventsStack.Screen name="EventsList" component={IslamicEventsScreen} />
+      <EventsStack.Screen name="EventPayment" component={EventPaymentScreen} />
+      <EventsStack.Screen name="EventQRCode" component={EventQRCodeScreen} />
+    </EventsStack.Navigator>
+  );
+};
+
 const TabNavigator = () => {
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.primary }} edges={["top"]}>
       <Tab.Navigator
         screenOptions={{
           tabBarActiveTintColor: COLORS.primary,
@@ -100,6 +154,15 @@ const TabNavigator = () => {
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="book" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Events"
+          component={EventsNavigator}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="calendar" size={size} color={color} />
             ),
           }}
         />
