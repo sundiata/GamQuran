@@ -1,39 +1,62 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES } from '../constants/theme';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Dimensions,
+  ImageSourcePropType,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES } from "../constants/theme";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
+
+interface Song {
+  title: string;
+  artist: string;
+  imageUrl: ImageSourcePropType;
+}
 
 const NowPlayingScreen = ({ navigation, route }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0.3); // Example progress
+  const [progress, setProgress] = useState(0.3);
+
+  // Extract song data safely with defaults
+  const song = route.params?.song || {
+    title: "Unknown Title",
+    artist: "Unknown Artist",
+    imageUrl: require("../assets/default-song.png"),
+  };
+  const songTitle = song?.title || "Unknown Title";
+  const artistName = song?.artist || "Unknown Artist";
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: COLORS.primary }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-down" size={32} color={COLORS.text} />
+          <Ionicons name="chevron-down" size={32} color={COLORS.background} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>NOW PLAYING</Text>
+        <Text style={[styles.headerTitle, { color: COLORS.background }]}>NOW PLAYING</Text>
         <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
+          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.background} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
         <View style={styles.artworkContainer}>
           <Image
-            source={{ uri: route.params?.song?.imageUrl || 'https://example.com/artwork.jpg' }}
+            source={song.imageUrl}
             style={styles.artwork}
-            defaultSource={require('../assets/default-song.png')}
+            defaultSource={require("../assets/default-song.png")}
           />
         </View>
 
         <View style={styles.songInfo}>
-          <Text style={styles.songTitle}>Janum Ali Ali</Text>
-          <Text style={styles.artistName}>Ali Jee</Text>
+          <Text style={styles.songTitle}>{songTitle}</Text>
+          <Text style={styles.artistName}>{artistName}</Text>
         </View>
 
         <View style={styles.progressContainer}>
@@ -53,13 +76,13 @@ const NowPlayingScreen = ({ navigation, route }) => {
           <TouchableOpacity style={styles.controlButton}>
             <Ionicons name="play-skip-back" size={32} color={COLORS.text} />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.playButton}
             onPress={() => setIsPlaying(!isPlaying)}
           >
-            <Ionicons 
-              name={isPlaying ? "pause" : "play"} 
-              size={32} 
+            <Ionicons
+              name={isPlaying ? "pause" : "play"}
+              size={32}
               color={COLORS.background}
             />
           </TouchableOpacity>
@@ -93,41 +116,41 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: SIZES.padding,
     paddingVertical: SIZES.padding,
   },
   headerTitle: {
     fontSize: SIZES.medium,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
   },
   content: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: SIZES.padding,
   },
   artworkContainer: {
     width: width - SIZES.padding * 4,
     height: width - SIZES.padding * 4,
     borderRadius: SIZES.radius * 2,
-    overflow: 'hidden',
+    overflow: "hidden",
     backgroundColor: COLORS.card,
     marginVertical: SIZES.padding * 2,
   },
   artwork: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   songInfo: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: SIZES.padding * 2,
   },
   songTitle: {
     fontSize: SIZES.extraLarge,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.text,
     marginBottom: SIZES.base,
   },
@@ -136,7 +159,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   progressContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: SIZES.padding * 2,
   },
   progressBar: {
@@ -145,13 +168,13 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progress: {
-    height: '100%',
+    height: "100%",
     backgroundColor: COLORS.primary,
     borderRadius: 2,
   },
   timeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: SIZES.base,
   },
   timeText: {
@@ -159,10 +182,10 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '80%',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "80%",
     marginBottom: SIZES.padding * 2,
   },
   controlButton: {
@@ -173,15 +196,15 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   bottomControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
     paddingBottom: SIZES.padding,
   },
 });
 
-export default NowPlayingScreen; 
+export default NowPlayingScreen;
