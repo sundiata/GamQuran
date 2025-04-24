@@ -87,111 +87,57 @@ export const LIGHT_COLORS = {
 
 // Dark theme colors
 export const DARK_COLORS = {
-  // Primary color scheme - adjusted for dark mode
-  primary: "#1ECFC2", // Brighter teal for dark mode
-  secondary: "#121212",
-  tertiary: "#34C6BA", // Lighter teal for accents in dark mode
+  // Primary color scheme
+  primary: BASE_COLORS.teal.main,
+  secondary: "#1A1A1A",
+  tertiary: BASE_COLORS.teal.light,
 
   // Additional accent colors
-  accent1: "#4DDAD0", // Brighter teal for dark mode
-  accent2: BASE_COLORS.gold.light,
-  accent3: "#0D3B37", // Very dark teal for backgrounds
+  accent1: BASE_COLORS.teal.dark,
+  accent2: BASE_COLORS.gold.dark,
+  accent3: BASE_COLORS.teal.darker,
 
   // Background and surface colors
-  background: "#121212", // Dark background
-  cardBackground: "#1E1E1E", // Slightly lighter dark for cards
-  headerBackground: "#0F5E57", // Darker, richer teal for header in dark mode
+  background: "#121212",
+  cardBackground: "#1E1E1E",
+  headerBackground: BASE_COLORS.teal.dark,
 
   // Text colors
-  text: "#FFFFFF", // White text for dark mode
-  textSecondary: "#AAAAAA", // Light gray for secondary text
-  textLight: "#FFFFFF", // White text
-  card: "#1E1E1E", // Dark card background
+  text: "#FFFFFF",
+  textSecondary: "#B0B0B0",
+  textLight: "#FFFFFF",
+  card: "#1E1E1E",
 
   // Status colors
-  success: BASE_COLORS.success.light,
-  warning: BASE_COLORS.warning.light,
-  error: BASE_COLORS.error.light,
-  info: BASE_COLORS.info.light,
+  success: BASE_COLORS.success.main,
+  warning: BASE_COLORS.warning.main,
+  error: BASE_COLORS.error.main,
+  info: BASE_COLORS.info.main,
 
   // UI elements
-  border: "#333333", // Darker border
-  overlay: "rgba(0, 0, 0, 0.7)", // Darker overlay
-  divider: "rgba(255, 255, 255, 0.1)", // Light divider for dark mode
+  border: "#2A2A2A",
+  overlay: "rgba(0, 0, 0, 0.7)",
+  divider: "rgba(255, 255, 255, 0.1)",
 
   // Gradients and transparencies
-  primaryTransparent: "rgba(30, 207, 194, 0.15)", // Adjusted for dark mode
-  secondaryTransparent: "rgba(255, 217, 102, 0.25)", // Adjusted for dark mode
+  primaryTransparent: "rgba(0, 169, 157, 0.2)",
+  secondaryTransparent: "rgba(242, 201, 76, 0.3)",
 
   // Prayer status colors
-  prayerCompleted: BASE_COLORS.success.light,
-  prayerNext: BASE_COLORS.warning.light,
-  prayerPending: "#1ECFC2", // Brighter teal for dark mode
+  prayerCompleted: BASE_COLORS.success.main,
+  prayerNext: BASE_COLORS.warning.main,
+  prayerPending: BASE_COLORS.teal.main,
 };
 
-export const FONTS = {
-  regular: "System",
-  medium: "System",
-  bold: "System",
-  light: "System",
-};
-
-export const SIZES = {
-  base: 8,
-  small: 12,
-  font: 14,
-  medium: 14,
-  large: 16,
-  extraLarge: 20,
-  padding: 24,
-  radius: 12,
-  width,
-  height,
-};
-
-// Light theme shadows
-const LIGHT_SHADOWS = {
+// Shadows
+export const SHADOWS = {
   light: {
-    shadowColor: LIGHT_COLORS.text,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  medium: {
-    shadowColor: LIGHT_COLORS.text,
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  dark: {
-    shadowColor: LIGHT_COLORS.text,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-};
-
-// Dark theme shadows
-const DARK_SHADOWS = {
-  light: {
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 2,
   },
@@ -199,32 +145,89 @@ const DARK_SHADOWS = {
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
   },
   dark: {
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  lightDark: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  mediumDark: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
       height: 4,
     },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  darkDark: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 6,
   },
 };
 
-export const SHADOWS = {
-  ...LIGHT_SHADOWS,
-  lightDark: DARK_SHADOWS.light,
-  mediumDark: DARK_SHADOWS.medium,
-  darkDark: DARK_SHADOWS.dark,
+// Sizes
+export const SIZES = {
+  // Base sizes
+  base: 8,
+  small: 12,
+  font: 14,
+  medium: 16,
+  large: 18,
+  extraLarge: 24,
+
+  // Typography sizes
+  h1: 32,
+  h2: 24,
+  h3: 20,
+  body1: 16,
+  body2: 14,
+  caption: 12,
+
+  // Spacing
+  padding: 16,
+  radius: 12,
+
+  // Dimensions
+  width,
+  height,
 };
 
-// For backward compatibility
+// Fonts
+export const FONTS = {
+  regular: 'System',
+  medium: 'System',
+  bold: 'System',
+  light: 'System',
+};
+
 export const COLORS = LIGHT_COLORS;
 
 export default { COLORS: LIGHT_COLORS, DARK_COLORS, FONTS, SIZES, SHADOWS };
