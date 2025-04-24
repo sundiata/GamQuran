@@ -395,10 +395,19 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate(screenName);
   };
 
+  const handleFeaturePress = (feature: string) => {
+    switch (feature) {
+      case 'Qibla':
+        navigation.navigate('Qibla');
+        break;
+      // ... existing cases ...
+    }
+  };
+
   const renderFeatureButton = (icon, label, screenName) => (
     <TouchableOpacity
       style={styles.featureButton}
-      onPress={() => navigateToFeature(screenName)}
+      onPress={() => handleFeaturePress(screenName)}
     >
       <View
         style={[

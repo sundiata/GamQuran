@@ -13,12 +13,15 @@ import NowPlayingScreen from "../screens/NowPlayingScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import AlbumDetailScreen from "../screens/AlbumDetailScreen";
 import AudioDetailsScreen from "../screens/AudioDetailsScreen";
+import AudioDetailScreen from "../screens/AudioDetailScreen";
 import IslamicEventsScreen from "../screens/IslamicEventsScreen";
 import EventPaymentScreen from "../screens/EventPaymentScreen";
 import EventQRCodeScreen from "../screens/EventQRCodeScreen";
+import QiblaScreen from "../screens/QiblaScreen";
 import { COLORS, SIZES } from "../constants/theme";
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 const QuranStack = createNativeStackNavigator();
 const AudioStack = createNativeStackNavigator();
 const EventsStack = createNativeStackNavigator();
@@ -75,6 +78,13 @@ const AudioNavigator = () => {
         component={AudioDetailsScreen}
       />
       <AudioStack.Screen
+        name="AudioDetail"
+        component={AudioDetailScreen}
+        options={{
+          headerShown: false
+        }}
+      />
+      <AudioStack.Screen
         name="AlbumDetail"
         component={AlbumDetailScreen}
       />
@@ -101,6 +111,23 @@ const EventsNavigator = () => {
       <EventsStack.Screen name="EventPayment" component={EventPaymentScreen} />
       <EventsStack.Screen name="EventQRCode" component={EventQRCodeScreen} />
     </EventsStack.Navigator>
+  );
+};
+
+const HomeNavigator = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Qibla"
+        component={QiblaScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
   );
 };
 
@@ -132,7 +159,7 @@ const TabNavigator = () => {
       >
         <Tab.Screen
           name="Home"
-          component={HomeScreen}
+          component={HomeNavigator}
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="home" size={size} color={color} />
